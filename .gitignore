@@ -1,0 +1,16 @@
+# Dependency directories
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Production build drops
+dist/
+build/
+
+# Environmental credentials
+.env
+.env.local
+
+# Operating System files
+.DS_Store
+Thumbs.db

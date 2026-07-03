@@ -1,0 +1,226 @@
+/* ==========================================================================
+   🖥️ LAYOUT VIEWPORT WORKING REGION (SCREEN WORKSPACE)
+   ========================================================================== */
+.spreadsheet-container {
+    padding: 24px;
+    background: #ffffff;
+    min-height: 100vh;
+    overflow-y: auto;
+}
+
+.spreadsheet-branding-header {
+    text-align: center;
+    border-bottom: 2px solid #000000;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+}
+
+.spreadsheet-branding-header h2 {
+    margin: 0 0 4px 0;
+    font-size: 24px;
+    font-weight: bold;
+    color: #000000;
+}
+
+.spreadsheet-branding-header p {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    color: #000000;
+}
+
+.spreadsheet-branding-header h4 {
+    margin: 14px 0 0 0;
+    text-decoration: underline;
+    text-transform: uppercase;
+    font-size: 16px;
+    font-weight: bold;
+    color: #000000;
+}
+
+/* ==========================================================================
+   📊 FIXED BORDER GRID ARCHITECTURE FOR DETAILS OF RECEIVER TABLE
+   ========================================================================== */
+.receiver-segment-block {
+    width: 100%;
+    border: 2px solid #000000;
+    margin-bottom: 24px;
+    background: #ffffff;
+    box-sizing: border-box;
+    border-collapse: collapse;
+}
+
+.receiver-table-title-row th {
+    font-weight: bold;
+    border-bottom: 2px solid #000000;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #000000;
+    text-align: center;
+    background: #fafafa;
+}
+
+.receiver-segment-block td {
+    border: 1px solid #000000;
+    padding: 8px 12px;
+    vertical-align: middle;
+    box-sizing: border-box;
+}
+
+.receiver-cell-layout {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.receiver-cell-label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #000000;
+    min-width: 110px;
+    text-align: left;
+}
+
+.receiver-cell-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+/* ==========================================================================
+   🧱 MAIN LEDGER DATA GRID STRUCTURES
+   ========================================================================== */
+.excel-ledger-table-wrapper {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.excel-ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    border: 2px solid #000000;
+    background: #ffffff;
+}
+
+.excel-ledger-table th {
+    background: #fafafa;
+    border: 1px solid #000000;
+    padding: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #000000;
+}
+
+.excel-ledger-table td {
+    border: 1px solid #000000;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #000000;
+}
+
+/* 🚀 KEY HIDE ENGINE: Completely hides duplicate print layers on screen workspace */
+.print-only-text-node {
+    display: none !important;
+}
+
+/* REMOVE SCROLLBAR TRACKS DISPLAY IN WEB WORKSPACE VIEWPORTS */
+div[style*="overflowX: auto"], 
+div[style*="overflow-x: auto"] {
+    scrollbar-width: none !important;
+}
+div[style*="overflowX: auto"]::-webkit-scrollbar, 
+div[style*="overflow-x: auto"]::-webkit-scrollbar {
+    display: none !important;
+}
+
+/* ==========================================================================
+   🖨️ CRITICAL A4 PORTRAIT PERFECT PRINT OVERRIDES
+   ========================================================================== */
+@media print {
+  
+    @page {
+        size: A4 portrait;
+        margin: 15mm 15mm 15mm 15mm;
+    }
+
+    .no-print, 
+    .ant-layout-sider, 
+    .ant-layout-header, 
+    .ant-select-selector, 
+    .ant-input,
+    .ant-input-number,
+    .ant-input-affix-wrapper,
+    input, 
+    textarea, 
+    .ant-btn
+            .ant-message,
+  .ant-message-notice
+     {
+    display: none !important;
+    }
+
+    body, html, .ant-layout, .ant-layout-content, .print-container {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+    }
+
+    /* 🚀 PRINT TEXT SYSTEM: Allows wrapping lines for Bank names */
+    .print-only-text-node {
+        display: block !important;
+        font-size: 12px !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        color: #000000 !important;
+        white-space: normal !important; 
+        word-break: break-word !important;
+    }
+
+    .receiver-segment-block {
+        width: 100% !important;
+        border: 2px solid #000000 !important;
+        border-collapse: collapse !important;
+    }
+
+    .receiver-segment-block td {
+        border: 1px solid #000000 !important;
+    }
+
+    .excel-ledger-table {
+        width: 100% !important;
+        border: 2px solid #000000 !important;
+        border-collapse: collapse !important;
+    }
+
+    .excel-ledger-table th, 
+    .excel-ledger-table td {
+        border: 1px solid #000000 !important;
+        padding: 8px 10px !important;
+    }
+
+    /* 🚀 EXPANDS LEFT BANK AND SHRINKS TOTALS CONTAINER TO SHORTEN THE GAP */
+    div[style*="gridTemplateColumns"] {
+        display: grid !important;
+        grid-template-columns: 1fr 310px !important; 
+        width: 100% !important;
+        gap: 30px !important;
+    }
+
+    div[style*="gridTemplateColumns"] > div:last-child {
+        width: 310px !important;
+        min-width: 310px !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    div[style*="justifyContent: space-between"] {
+        display: flex !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+    }
+}

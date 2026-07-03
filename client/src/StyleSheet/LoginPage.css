@@ -1,0 +1,65 @@
+/* ==========================================================================
+   TEXTILES BILLING SYSTEM - LOGIN PORTAL WALLPAPER ENGINE
+   ========================================================================== */
+
+.login-page-wrapper {
+  /* Direct CDN deep navy denim fabric texture link */
+  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), 
+                    url('https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=1600&auto=format&fit=crop') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+  width: 100vw !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Semi-transparent frosted card container to stand out cleanly on the cloth background */
+.login-frosted-card {
+  width: 400px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.login-system-title {
+  color: #111111 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
+  margin-bottom: 0 !important;
+}
+
+.login-layout-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.login-title {
+  margin: 0 !important; /* Ant Design titles have default margins, !important overrides it */
+  text-align: center;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.login-button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.login-btn-flex {
+  flex: 1;
+}
