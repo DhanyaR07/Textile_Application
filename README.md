@@ -42,7 +42,7 @@ CREATE TABLE invoice_billing_ledger (
     Net_Total DECIMAL(10,2)
 );
 
-## Environment Configuration
+### 2. Environment Configuration
 
 To connect the backend server to your database, create a .env file inside your /server
 
@@ -52,7 +52,7 @@ DB_PASSWORD=your_mysql_password_here
 DB_NAME=textile_billing_db
 DB_PORT=3306
 
-# Installation & Execution Guide
+### 3. Installation & Execution Guide
 
 ### Server Execution
 1. cd server
