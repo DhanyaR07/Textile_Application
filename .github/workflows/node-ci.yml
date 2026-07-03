@@ -1,4 +1,4 @@
-name: Node.js CI Pipeline Check
+name: Textile Application Build Check
 
 on:
   push:
@@ -7,19 +7,19 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  verify-application:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository source code
+    - name: Checkout Code from Repository
       uses: actions/checkout@v4
 
-    - name: Setup Node.js Environment
+    - name: Setup Node.js Sandbox Environment
       uses: actions/setup-node@v4
       with:
         node-version: '20'
 
-    - name: Install Server Dependencies & Test Compile
+    - name: Verify Backend Dependancies
       run: |
         cd server
         npm install
