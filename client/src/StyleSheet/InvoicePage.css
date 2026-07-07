@@ -15,35 +15,13 @@
     margin-bottom: 20px;
 }
 
-.spreadsheet-branding-header h2 {
-    margin: 0 0 4px 0;
-    font-size: 24px;
-    font-weight: bold;
-    color: #000000;
-}
-
-.spreadsheet-branding-header p {
-    margin: 0 0 4px 0;
-    font-size: 13px;
-    color: #000000;
-}
-
-.spreadsheet-branding-header h4 {
-    margin: 14px 0 0 0;
-    text-decoration: underline;
-    text-transform: uppercase;
-    font-size: 16px;
-    font-weight: bold;
-    color: #000000;
-}
-
 /* ==========================================================================
    📊 FIXED BORDER GRID ARCHITECTURE FOR DETAILS OF RECEIVER TABLE
    ========================================================================== */
 .receiver-segment-block {
     width: 100%;
     border: 2px solid #000000;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     background: #ffffff;
     box-sizing: border-box;
     border-collapse: collapse;
@@ -52,7 +30,7 @@
 .receiver-table-title-row th {
     font-weight: bold;
     border-bottom: 2px solid #000000;
-    padding: 8px 12px;
+    padding: 6px 12px;
     font-size: 13px;
     color: #000000;
     text-align: center;
@@ -61,9 +39,10 @@
 
 .receiver-segment-block td {
     border: 1px solid #000000;
-    padding: 8px 12px;
+    padding: 4px 12px;
     vertical-align: middle;
     box-sizing: border-box;
+    height: 32px;
 }
 
 .receiver-cell-layout {
@@ -76,7 +55,7 @@
     font-size: 12px;
     font-weight: bold;
     color: #000000;
-    min-width: 110px;
+    min-width: 90px;
     text-align: left;
 }
 
@@ -87,7 +66,7 @@
 }
 
 /* ==========================================================================
-   🧱 MAIN LEDGER DATA GRID STRUCTURES
+   🧱 MAIN LEDGER DATA GRID STRUCTURES (PRE-DEFINED FLAT ROWS)
    ========================================================================== */
 .excel-ledger-table-wrapper {
     width: 100%;
@@ -105,25 +84,133 @@
 .excel-ledger-table th {
     background: #fafafa;
     border: 1px solid #000000;
-    padding: 6px;
-    font-size: 12px;
+    padding: 6px 4px;
+    font-size: 11px;
     font-weight: bold;
     color: #000000;
 }
 
 .excel-ledger-table td {
     border: 1px solid #000000;
-    padding: 8px 10px;
-    font-size: 12px;
+    padding: 4px 6px;
+    font-size: 11px;
     color: #000000;
+    height: 32px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* 🚀 KEY HIDE ENGINE: Completely hides duplicate print layers on screen workspace */
+/* ==========================================================================
+   📊 UNIFIED FOOTER EXCEL STRUCTURAL BLOCKS
+   ========================================================================== */
+.excel-footer-unified-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 2px solid #000000;
+    background: #ffffff;
+    table-layout: fixed;
+}
+
+.excel-footer-unified-table td {
+    border: 1px solid #000000;
+    padding: 5px 8px;
+    font-size: 11px;
+    color: #000000;
+    vertical-align: middle;
+}
+
+.amount-words-banner-cell {
+    border-bottom: 2px solid #000000 !important;
+    text-align: left;
+    background: #ffffff;
+    height: 30px;
+}
+
+.bank-header-cell {
+    background: #fafafa;
+    font-weight: bold;
+    text-align: center;
+}
+
+.bank-data-cell {
+    text-align: left;
+    font-weight: 500;
+}
+
+.tax-totals-heading-cell {
+    background: #fafafa;
+    font-weight: bold;
+    text-align: left;
+    padding-left: 10px !important;
+    width: 25%;
+}
+
+.tax-rate-percentage-cell {
+    text-align: center;
+    font-weight: bold;
+    background: #ffffff;
+    width: 10%;
+}
+
+.tax-totals-value-cell {
+    text-align: right;
+    font-weight: bold;
+    background: #ffffff;
+    width: 15%;
+}
+
+.net-total-heading-cell {
+    background: #fafafa;
+    font-weight: bold;
+    text-align: left;
+    padding-left: 10px !important;
+    font-size: 13px;
+}
+
+.net-total-value-cell {
+    text-align: right;
+    font-weight: bold;
+    font-size: 14px;
+    background: #ffffff;
+}
+
+.declaration-terms-cell {
+    line-height: 1.6;
+    font-size: 10px !important;
+    text-align: left;
+    padding: 8px !important;
+}
+
+.auth-signature-block-cell {
+    background: #ffffff;
+    vertical-align: top !important;
+    padding: 8px !important;
+}
+
+.auth-sign-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 75px;
+    text-align: center;
+}
+
+.auth-company-title {
+    font-weight: bold;
+    font-size: 11px;
+}
+
+.auth-signature-line {
+    font-size: 11px;
+    font-style: italic;
+}
+
+/* RENDERING CONTROLS FOR IN-SCREEN LAYOUT MODIFIERS */
 .print-only-text-node {
     display: none !important;
 }
 
-/* REMOVE SCROLLBAR TRACKS DISPLAY IN WEB WORKSPACE VIEWPORTS */
 div[style*="overflowX: auto"], 
 div[style*="overflow-x: auto"] {
     scrollbar-width: none !important;
@@ -134,15 +221,15 @@ div[style*="overflow-x: auto"]::-webkit-scrollbar {
 }
 
 /* ==========================================================================
-   🖨️ CRITICAL A4 PORTRAIT PERFECT PRINT OVERRIDES
+   🖨️ CRITICAL SINGLE-PAGE A4 PORTRAIT PERFECT PRINT ARCHITECTURE
    ========================================================================== */
 @media print {
-  
     @page {
         size: A4 portrait;
-        margin: 15mm 15mm 15mm 15mm;
+        margin: 8mm 10mm 8mm 10mm; /* Compressed margins for optimal data height usage */
     }
 
+    /* Hide Web UI Components */
     .no-print, 
     .ant-layout-sider, 
     .ant-layout-header, 
@@ -152,75 +239,81 @@ div[style*="overflow-x: auto"]::-webkit-scrollbar {
     .ant-input-affix-wrapper,
     input, 
     textarea, 
-    .ant-btn
-            .ant-message,
-  .ant-message-notice
-     {
-    display: none !important;
+    .ant-btn,
+    .ant-message,
+    .ant-message-notice {
+        display: none !important;
     }
 
-    body, html, .ant-layout, .ant-layout-content, .print-container {
+    /* 🚀 COMPLETE CONTAINER COMPRESSION: Locks page-spillover completely */
+    body, html, .ant-layout, .ant-layout-content, .print-container, .spreadsheet-container {
         display: block !important;
         position: static !important;
         width: 100% !important;
+        max-width: 185mm !important;
         height: auto !important;
         background: #ffffff !important;
         color: #000000 !important;
         padding: 0 !important;
-        margin: 0 !important;
+        margin: 0 auto !important;
         overflow: visible !important;
+        /* Uniform layout text scale normalization */
+        zoom: 94%; 
     }
 
-    /* 🚀 PRINT TEXT SYSTEM: Allows wrapping lines for Bank names */
+    .spreadsheet-branding-header {
+        margin-bottom: 10px !important;
+        padding-bottom: 6px !important;
+    }
+
+    /* 🚀 MINIFY CELL PADDING HEIGHTS DURING PRINT EXECUTION */
+    .receiver-segment-block {
+        margin-bottom: 12px !important;
+    }
+    .receiver-segment-block td {
+        height: 26px !important;
+        padding: 2px 8px !important;
+    }
+
+    .excel-ledger-table td {
+        height: 25px !important; /* Tightens the 10 data rows into a compact vertical space */
+        padding: 2px 6px !important;
+    }
+    .excel-ledger-table th {
+        padding: 4px 4px !important;
+    }
+
+    .excel-footer-unified-table td {
+        padding: 4px 6px !important;
+    }
+    .auth-sign-wrapper {
+        height: 60px !important; /* Lowers empty signing box buffer space */
+    }
+
     .print-only-text-node {
         display: block !important;
-        font-size: 12px !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        font-size: 11px !important;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
         color: #000000 !important;
         white-space: normal !important; 
-        word-break: break-word !important;
+        word-break: break-all !important;
     }
 
-    .receiver-segment-block {
+    /* Solidify layout mesh lines without breaking page rules */
+    .receiver-segment-block,
+    .excel-ledger-table,
+    .excel-footer-unified-table {
         width: 100% !important;
-        border: 2px solid #000000 !important;
+        border: 1.5px solid #000000 !important;
         border-collapse: collapse !important;
+        page-break-inside: avoid !important; /* Strong command enforcing no split pages */
     }
 
-    .receiver-segment-block td {
+    .receiver-segment-block td,
+    .excel-ledger-table td,
+    .excel-ledger-table th,
+    .excel-footer-unified-table td {
         border: 1px solid #000000 !important;
-    }
-
-    .excel-ledger-table {
-        width: 100% !important;
-        border: 2px solid #000000 !important;
-        border-collapse: collapse !important;
-    }
-
-    .excel-ledger-table th, 
-    .excel-ledger-table td {
-        border: 1px solid #000000 !important;
-        padding: 8px 10px !important;
-    }
-
-    /* 🚀 EXPANDS LEFT BANK AND SHRINKS TOTALS CONTAINER TO SHORTEN THE GAP */
-    div[style*="gridTemplateColumns"] {
-        display: grid !important;
-        grid-template-columns: 1fr 310px !important; 
-        width: 100% !important;
-        gap: 30px !important;
-    }
-
-    div[style*="gridTemplateColumns"] > div:last-child {
-        width: 310px !important;
-        min-width: 310px !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
-
-    div[style*="justifyContent: space-between"] {
-        display: flex !important;
-        justify-content: space-between !important;
-        width: 100% !important;
+        color: #000000 !important;
     }
 }

@@ -7,6 +7,24 @@ import '../StyleSheet/InvoicePage.css';
 const { Header, Sider, Content } = Layout;
 const { Option } = Select;
 
+// Helper function to generate an array of fixed blank rows
+const createFixedBlankRows = (count) => {
+    return Array.from({ length: count }, (_, idx) => ({
+        id: `fixed-row-${Date.now()}-${idx}`,
+        product_name: '',
+        hsn_code: '',
+        qty: null,
+        size: '',
+        rate: null,
+        amount: 0,
+        discount: null,
+        taxable: 0,
+        cgst_p: 2.5,
+        sgst_p: 2.5,
+        igst_p: 5.0
+    }));
+};
+
 const convertNumberToWords = (num) => {
     const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
     const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
@@ -51,13 +69,11 @@ function InvoicePage() {
 
     const [headerData, setHeaderData] = useState({
         receiver_name: '', address: '', state: '', state_code: '', gstin_no: '', invoice_no: '', date: '', lr_no: '', bale_no: '',
-        lorry_name: '' // 🚀 Track carrier transport logs
+        lorry_name: '', through: ''
     });
 
-    const [items, setItems] = useState([
-        { id: Date.now(), product_name: '', hsn_code: '', qty: 1, size: '', rate: 0, amount: 0, discount: 0, taxable: 0, cgst_p: 2.5, sgst_p: 2.5, igst_p: 5.0 }
-    ]);
-
+    // 🚀 EXCEL PRE-FILL ARCHITECTURE: Standardize on an initial layout structure of 10 static rows
+    const [items, setItems] = useState(createFixedBlankRows(10));
     const [totals, setTotals] = useState({ taxableSum: 0, cgst: 0, sgst: 0, igst: 0, netTotal: 0 });
 
     const fetchAllPortalRecords = async () => {
@@ -93,10 +109,12 @@ function InvoicePage() {
     const recalcTotals = (currentItems) => {
         let taxableSum = 0, totalCgst = 0, totalSgst = 0, totalIgst = 0;
         currentItems.forEach(item => {
-            taxableSum += (item.taxable || 0);
-            totalCgst += item.taxable * (Number(item.cgst_p || 0) / 100);
-            totalSgst += item.taxable * (Number(item.sgst_p || 0) / 100);
-            totalIgst += item.taxable * (Number(item.igst_p || 0) / 100);
+            if (item.product_name) { // Only aggregate calculations for populated rows
+                taxableSum += (item.taxable || 0);
+                totalCgst += item.taxable * (Number(item.cgst_p || 0) / 100);
+                totalSgst += item.taxable * (Number(item.sgst_p || 0) / 100);
+                totalIgst += item.taxable * (Number(item.igst_p || 0) / 100);
+            }
         });
         setTotals({ taxableSum, cgst: totalCgst, sgst: totalSgst, igst: totalIgst, netTotal: Math.round(taxableSum + totalCgst + totalSgst + totalIgst) });
     };
@@ -113,6 +131,15 @@ function InvoicePage() {
                 updatedItems[index].rate = Number(matched.Rate || 0);
                 updatedItems[index].discount = Number(matched.Discount || 0);
                 updatedItems[index].qty = 1;
+            } else if (!value) {
+                // If row content is completely cleared, restore it to a clean blank state
+                updatedItems[index].hsn_code = '';
+                updatedItems[index].size = '';
+                updatedItems[index].rate = null;
+                updatedItems[index].discount = null;
+                updatedItems[index].qty = null;
+                updatedItems[index].amount = 0;
+                updatedItems[index].taxable = 0;
             }
         }
         
@@ -129,11 +156,8 @@ function InvoicePage() {
 
     const handleCompanyChange = (field, value) => setCompanyData(prev => ({ ...prev, [field]: value }));
     const handleHeaderChange = (field, value) => setHeaderData(prev => ({ ...prev, [field]: value }));
-    const handleBankChange = (field, value) => setBankData(prev => ({ ...prev, [field]: value }));
-    const handleBank2Change = (field, value) => setBankData2(prev => ({ ...prev, [field]: value }));
-    const addRowItem = () => setItems([...items, { id: Date.now(), product_name: '', hsn_code: '', qty: 1, size: '', rate: 0, amount: 0, discount: 0, taxable: 0, cgst_p: 2.5, sgst_p: 2.5, igst_p: 5.0 }]);
-    const removeRowItem = (index) => { if (items.length === 1) return; const filtered = items.filter((_, i) => i !== index); setItems(filtered); recalcTotals(filtered); };
     
+    // 🚀 LOAD ORDER INLINE REPLACEMENT MATRIX
     const selectOrderBundle = (selectedOrder) => {
         const matchedCustomer = customers.find(c => c.Name === selectedOrder.Customer_name);
         const resolvedCompanyName = matchedCustomer?.Company_Name || selectedOrder.Company_Name || '';
@@ -145,26 +169,21 @@ function InvoicePage() {
             state_code: String(selectedOrder.State_Code || '33').trim(),
             gstin_no: selectedOrder.GSTIN_NO || '',
             invoice_no: selectedOrder.Invoice_No || '',
-            lorry_name: selectedOrder.Lorry_Name || selectedOrder.lorry_name || ''
+            lorry_name: selectedOrder.Lorry_Name || selectedOrder.lorry_name || '',
+            through: selectedOrder.Through || selectedOrder.through || ''
         };
         
-        setHeaderData(prev => ({ 
-            ...prev, 
-            ...profile, 
-            company_name: resolvedCompanyName,
-            Company_Name: resolvedCompanyName
-        }));
-        
-        form.setFieldsValue({
-            ...profile,
-            Company_Name: resolvedCompanyName
-        });
+        setHeaderData(prev => ({ ...prev, ...profile }));
+        form.setFieldsValue({ ...profile, Company_Name: resolvedCompanyName });
 
         if (selectedOrder.Ordered_Products && Array.isArray(selectedOrder.Ordered_Products)) {
-            const transformedItems = selectedOrder.Ordered_Products.map((ordProd, idx) => {
+            // Re-map incoming items directly into our fixed matrix array structure
+            const baseMatrix = createFixedBlankRows(Math.max(10, selectedOrder.Ordered_Products.length));
+            
+            selectedOrder.Ordered_Products.forEach((ordProd, idx) => {
                 const amt = Number(ordProd.QTY || 0) * Number(ordProd.Rate || 0);
-                return {
-                    id: Date.now() + idx,
+                baseMatrix[idx] = {
+                    id: `loaded-row-${Date.now()}-${idx}`,
                     product_name: ordProd.Product_Name,
                     hsn_code: ordProd.HSN_Code || '',
                     qty: Number(ordProd.QTY || 1),
@@ -173,13 +192,14 @@ function InvoicePage() {
                     amount: amt,
                     discount: Number(ordProd.Discount || 0),
                     taxable: Math.max(0, amt - Number(ordProd.Discount || 0)),
-                    cgst_p: Number(ordProd.CGST_Rate || 0),
-                    sgst_p: Number(ordProd.SGST_Rate || 0),
-                    igst_p: Number(ordProd.IGST_Rate || 0)
+                    cgst_p: Number(ordProd.CGST_Rate || 2.5),
+                    sgst_p: Number(ordProd.SGST_Rate || 2.5),
+                    igst_p: Number(ordProd.IGST_Rate || 5.0)
                 };
             });
-            setItems(transformedItems);
-            recalcTotals(transformedItems);
+            
+            setItems(baseMatrix);
+            recalcTotals(baseMatrix);
         }
         setDrawerVisible(false);
     };
@@ -191,16 +211,21 @@ function InvoicePage() {
         }
 
         try {
+            // Filter down to rows containing actual data to keep database writes efficient
+            const pureActiveItems = items.filter(item => item.product_name !== '');
+            
             const payload = {
                 invoice_no: headerData.invoice_no,
                 receiver_name: headerData.receiver_name,
-                company_name: headerData.Company_Name || headerData.company_name || form.getFieldValue('Company_Name') || '',
+                company_name: form.getFieldValue('Company_Name') || '—',
                 taxableSum: totals.taxableSum,
                 netTotal: totals.netTotal,
                 bale_no: headerData.bale_no,
                 lr_no: headerData.lr_no,
                 date: headerData.date,
-                lorry_name: headerData.lorry_name // 🚀 Pass lorry transport state to API parameters
+                lorry_name: headerData.lorry_name,
+                through: headerData.through,
+                items: pureActiveItems
             };
 
             const res = await fetch('http://localhost:5001/api/invoices/save-draft', {
@@ -279,105 +304,124 @@ function InvoicePage() {
                     <Form form={form} layout="inline" style={{ width: '100%' }}>
                         <table className="receiver-segment-block">
                             <thead>
-                                <tr className="receiver-table-title-row"><th colSpan="2">DETAILS OF RECEIVER (BILLED TO)</th></tr>
+                                <tr className="receiver-table-title-row">
+                                    <th style={{ width: '50%', textTransform: 'uppercase', borderRight: '1px solid #000000' }}>DETAILS OF RECEIVER (BILLED TO)</th>
+                                    <th style={{ width: '50%', textTransform: 'uppercase' }}>INVOICE DETAILS</th>
+                                </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td style={{ width: '50%', padding: '4px 12px' }}>
+                                    <td style={{ padding: '4px 12px', borderRight: '1px solid #000000' }}>
                                         <div className="receiver-cell-layout">
-                                            <span className="receiver-cell-label" style={{ minWidth: '105px' }}>Receiver Name:</span>
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>Name:</span>
                                             <div className="receiver-cell-content">
-                                                <span className="print-only-text-node">{headerData.receiver_name || '---'}</span>
-                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000', fontWeight: 'bold' }} placeholder="Enter Receiver Name" value={headerData.receiver_name} onChange={(e) => handleHeaderChange('receiver_name', e.target.value)} />
+                                                <span className="print-only-text-node">{headerData.receiver_name || '—'}</span>
+                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000', fontWeight: 'bold' }} placeholder="Enter Name" value={headerData.receiver_name} onChange={(e) => handleHeaderChange('receiver_name', e.target.value)} />
                                             </div>
                                         </div>
                                     </td>
-                                    <td style={{ width: '50%', padding: '4px 12px' }}>
+                                    <td style={{ padding: '4px 12px' }}>
                                         <div className="receiver-cell-layout">
-                                            <span className="receiver-cell-label" style={{ minWidth: '80px' }}>Invoice No:</span>
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>Invoice No:</span>
                                             <div className="receiver-cell-content">
-                                                <span className="print-only-text-node">{headerData.invoice_no || '---'}</span>
+                                                <span className="print-only-text-node">{headerData.invoice_no || '—'}</span>
                                                 <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000', fontWeight: 'bold' }} placeholder="Invoice No" value={headerData.invoice_no} onChange={(e) => handleHeaderChange('invoice_no', e.target.value)} />
                                             </div>
                                         </div>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style={{ padding: '4px 12px' }}>
+                                    <td style={{ padding: '4px 12px', borderRight: '1px solid #000000', verticalAlign: 'top' }}>
                                         <div className="receiver-cell-layout" style={{ alignItems: 'flex-start' }}>
-                                            <span className="receiver-cell-label" style={{ minWidth: '105px', marginTop: '6px' }}>Address:</span>
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px', marginTop: '6px' }}>Address:</span>
                                             <div className="receiver-cell-content">
-                                                <span className="print-only-text-node">{headerData.address || '---'}</span>
-                                                <Input.TextArea className="no-print" rows={2} variant="borderless" style={{ padding: '4px 0', fontSize: '12px', resize: 'none', width: '100%', color: '#000000' }} placeholder="Enter Billing Address" value={headerData.address} onChange={(e) => handleHeaderChange('address', e.target.value)} />
+                                                <span className="print-only-text-node" style={{ minHeight: '36px' }}>{headerData.address || '—'}</span>
+                                                <Input.TextArea className="no-print" rows={2} variant="borderless" style={{ padding: '4px 0', fontSize: '12px', resize: 'none', width: '100%', color: '#000000' }} placeholder="Enter Address" value={headerData.address} onChange={(e) => handleHeaderChange('address', e.target.value)} />
                                             </div>
                                         </div>
                                     </td>
                                     <td style={{ verticalAlign: 'top', padding: '4px 12px' }}>
-                                        <div className="receiver-cell-layout" style={{ alignItems: 'center' }}>
-                                            <span className="receiver-cell-label" style={{ minWidth: '80px' }}>Date:</span>
+                                        <div className="receiver-cell-layout">
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>Date:</span>
                                             <div className="receiver-cell-content">
-                                                <span className="print-only-text-node">{headerData.date || '---'}</span>
+                                                <span className="print-only-text-node">{headerData.date || '—'}</span>
                                                 <Input className="no-print" type="date" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000' }} value={headerData.date} onChange={(e) => handleHeaderChange('date', e.target.value)} />
                                             </div>
                                         </div>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style={{ padding: '4px 12px' }}>
+                                    <td style={{ padding: '4px 12px', borderRight: '1px solid #000000' }}>
                                         <div className="receiver-cell-layout">
-                                            <span className="receiver-cell-label" style={{ minWidth: '105px' }}>State & Code:</span>
-                                            <div className="receiver-cell-content" style={{ gap: '4px' }}>
-                                                <span className="print-only-text-node">{headerData.state} &nbsp;&nbsp; Code: {headerData.state_code}</span>
-                                                <Input className="no-print" variant="borderless" placeholder="State" style={{ padding: '4px 0', fontSize: '12px', width: '140px', color: '#000000' }} value={headerData.state} onChange={(e) => handleHeaderChange('state', e.target.value)} />
-                                                <span className="no-print" style={{ color: '#d9d9d9', padding: '0 4px' }}>|</span>
-                                                <Input className="no-print" variant="borderless" placeholder="Code" style={{ padding: '4px 0', fontSize: '12px', width: '70px', color: '#000000' }} value={headerData.state_code} onChange={(e) => handleHeaderChange('state_code', e.target.value)} />
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>State:</span>
+                                            <div className="receiver-cell-content">
+                                                <span className="print-only-text-node">{headerData.state || '—'}</span>
+                                                <Input className="no-print" variant="borderless" placeholder="State" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000' }} value={headerData.state} onChange={(e) => handleHeaderChange('state', e.target.value)} />
                                             </div>
                                         </div>
                                     </td>
                                     <td style={{ padding: '4px 12px' }}>
                                         <div className="receiver-cell-layout">
-                                            <span className="receiver-cell-label" style={{ minWidth: '80px' }}>LR No:</span>
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>LR No:</span>
                                             <div className="receiver-cell-content">
-                                                <span className="print-only-text-node">{headerData.lr_no || '---'}</span>
-                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000' }} placeholder="Lorry Receipt No" value={headerData.lr_no} onChange={(e) => handleHeaderChange('lr_no', e.target.value)} />
+                                                <span className="print-only-text-node">{headerData.lr_no || '—'}</span>
+                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000' }} placeholder="LR No" value={headerData.lr_no} onChange={(e) => handleHeaderChange('lr_no', e.target.value)} />
                                             </div>
                                         </div>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style={{ padding: '4px 12px' }}>
+                                    <td style={{ padding: '4px 12px', borderRight: '1px solid #000000' }}>
                                         <div className="receiver-cell-layout">
-                                            <span className="receiver-cell-label" style={{ minWidth: '105px' }}>GSTIN No:</span>
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>State Code:</span>
                                             <div className="receiver-cell-content">
-                                                <span className="print-only-text-node">{headerData.gstin_no || '---'}</span>
-                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000', textTransform: 'uppercase', letterSpacing: '0.5px' }} placeholder="15-Digit GSTIN" value={headerData.gstin_no} onChange={(e) => handleHeaderChange('gstin_no', e.target.value)} />
+                                                <span className="print-only-text-node">{headerData.state_code || '—'}</span>
+                                                <Input className="no-print" variant="borderless" placeholder="State Code" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000' }} value={headerData.state_code} onChange={(e) => handleHeaderChange('state_code', e.target.value)} />
                                             </div>
                                         </div>
                                     </td>
                                     <td style={{ padding: '4px 12px' }}>
-                                        <div className="receiver-cell-layout" style={{ justifyContent: 'space-between' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                                <span className="receiver-cell-label" style={{ minWidth: '80px' }}>BALE No:</span>
-                                                <div className="receiver-cell-content" style={{ width: '100%' }}>
-                                                    <span className="print-only-text-node">{headerData.bale_no || '---'}</span>
-                                                    <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000' }} placeholder="Bale No" value={headerData.bale_no} onChange={(e) => handleHeaderChange('bale_no', e.target.value)} />
-                                                </div>
+                                        <div className="receiver-cell-layout">
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>BALE No:</span>
+                                            <div className="receiver-cell-content">
+                                                <span className="print-only-text-node">{headerData.bale_no || '—'}</span>
+                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000' }} placeholder="BALE No" value={headerData.bale_no} onChange={(e) => handleHeaderChange('bale_no', e.target.value)} />
                                             </div>
-                                            <Button className="no-print" type="primary" size="small" icon={<HistoryOutlined />} onClick={() => setDrawerVisible(true)} style={{ borderRadius: 0, background: '#1890ff', borderColor: '#1890ff', fontSize: '11px', height: '24px' }}>Order Details Lookup</Button>
                                         </div>
                                     </td>
                                 </tr>
-                                {/* 🚀 FIXED COLUMN LAYOUT: Renders transport row input dynamically on the right hand side */}
                                 <tr>
-                                    <td style={{ padding: '4px 12px' }}>
-                                        
+                                    <td style={{ padding: '4px 12px', borderRight: '1px solid #000000' }}>
+                                        <div className="receiver-cell-layout">
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>GSTIN No:</span>
+                                            <div className="receiver-cell-content">
+                                                <span className="print-only-text-node">{headerData.gstin_no || '—'}</span>
+                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000', textTransform: 'uppercase' }} placeholder="GSTIN No" value={headerData.gstin_no} onChange={(e) => handleHeaderChange('gstin_no', e.target.value)} />
+                                            </div>
+                                        </div>
                                     </td>
                                     <td style={{ padding: '4px 12px' }}>
                                         <div className="receiver-cell-layout">
-                                            <span className="receiver-cell-label" style={{ minWidth: '80px' }}>Lorry:</span>
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>LORRY:</span>
                                             <div className="receiver-cell-content">
-                                                <span className="print-only-text-node">{headerData.lorry_name || '---'}</span>
-                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000', fontWeight: 'bold' }} placeholder="e.g., KPN Transport / VRL" value={headerData.lorry_name} onChange={(e) => handleHeaderChange('lorry_name', e.target.value)} />
+                                                <span className="print-only-text-node">{headerData.lorry_name || '—'}</span>
+                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000', fontWeight: 'bold' }} placeholder="LORRY Carrier" value={headerData.lorry_name} onChange={(e) => handleHeaderChange('lorry_name', e.target.value)} />
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style={{ padding: '4px 12px', borderRight: '1px solid #000000' }}>
+                                        <div className="no-print" style={{ textAlign: 'left' }}>
+                                            <Button type="primary" size="small" icon={<HistoryOutlined />} onClick={() => setDrawerVisible(true)} style={{ borderRadius: 0, fontSize: '11px' }}>Order Details Lookup</Button>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '4px 12px' }}>
+                                        <div className="receiver-cell-layout">
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>THROUGH:</span>
+                                            <div className="receiver-cell-content">
+                                                <span className="print-only-text-node">{headerData.through || '—'}</span>
+                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000' }} placeholder="THROUGH Agent" value={headerData.through} onChange={(e) => handleHeaderChange('through', e.target.value)} />
                                             </div>
                                         </div>
                                     </td>
@@ -390,15 +434,15 @@ function InvoicePage() {
                                 <thead>
                                     <tr>
                                         <th style={{ width: '5%', textAlign: 'center' }}>No</th>
-                                        <th style={{ width: '25%' }}>Product Details</th>
-                                        <th style={{ width: '10%' }}>HSN Code</th>
-                                        <th style={{ width: '8%' }}>QTY</th>
-                                        <th style={{ width: '8%' }}>Size</th>
-                                        <th style={{ width: '10%' }}>Rate</th>
-                                        <th style={{ width: '11%' }}>Amount</th>
-                                        <th style={{ width: '9%' }}>Discount</th>
-                                        <th style={{ width: '12%' }}>Taxable Val</th>
-                                        <th style={{ width: '50px', textAlign: 'center' }} className="no-print">Del</th>
+                                        <th style={{ width: '30%' }}>Particulars</th>
+                                        <th style={{ width: '10%', textAlign: 'center' }}>HSN Code</th>
+                                        <th style={{ width: '8%', textAlign: 'center' }}>QTY</th>
+                                        <th style={{ width: '8%', textAlign: 'center' }}>Size</th>
+                                        <th style={{ width: '10%', textAlign: 'right' }}>Rate</th>
+                                        <th style={{ width: '11%', textAlign: 'right' }}>Amount</th>
+                                        <th style={{ width: '9%', textAlign: 'right' }}>Discount</th>
+                                        <th style={{ width: '12%', textAlign: 'right' }}>Taxable Value</th>
+                                        <th style={{ width: '50px', textAlign: 'center' }} className="no-print font-cell-label">Clear</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -406,83 +450,118 @@ function InvoicePage() {
                                         <tr key={item.id || index}>
                                             <td style={{ textAlign: 'center' }}>{index + 1}</td>
                                             <td>
-                                                <span className="print-only-text-node">{item.product_name || '---'}</span>
+                                                <span className="print-only-text-node">{item.product_name || '—'}</span>
                                                 <div className="no-print">
-                                                    <Select showSearch variant="borderless" style={{ width: '100%', padding: 0 }} placeholder="Select item" value={item.product_name || undefined} onChange={(val) => handleRowChange(index, 'product_name', val)}>
+                                                    <Select showSearch allowClear variant="borderless" style={{ width: '100%', padding: 0 }} placeholder="Select Item Particular" value={item.product_name || undefined} onChange={(val) => handleRowChange(index, 'product_name', val)}>
                                                         {products.map((p, idx) => <Option key={`${p.Products}-${idx}`} value={p.Products}>{p.Products}</Option>)}
                                                     </Select>
                                                 </div>
                                             </td>
-                                            <td style={{ fontWeight: 'bold', background: '#f9f9f9' }}>{item.hsn_code || 0}</td>
+                                            <td style={{ textAlign: 'center', background: '#f9f9f9', fontWeight: '500' }}>{item.hsn_code || '—'}</td>
                                             <td>
-                                                <span className="print-only-text-node">{item.qty}</span>
-                                                <InputNumber className="no-print" min={1} variant="borderless" style={{ width: '100%', padding: 0 }} value={item.qty} onChange={(val) => handleRowChange(index, 'qty', val)} />
+                                                <span className="print-only-text-node">{item.qty !== null ? item.qty : '—'}</span>
+                                                <InputNumber className="no-print" min={1} variant="borderless" style={{ width: '100%', padding: 0, textAlign: 'center' }} value={item.qty} placeholder="—" onChange={(val) => handleRowChange(index, 'qty', val)} />
                                             </td>
-                                            <td>
-                                                <span className="print-only-text-node">{item.size || '---'}</span>
-                                                <Input className="no-print" variant="borderless" style={{ padding: 0 }} value={item.size} onChange={(e) => handleRowChange(index, 'size', e.target.value)} />
+                                            <td style={{ textAlign: 'center' }}>
+                                                <span className="print-only-text-node">{item.size || '—'}</span>
+                                                <Input className="no-print" variant="borderless" style={{ padding: 0, textAlign: 'center' }} value={item.size} placeholder="—" onChange={(e) => handleRowChange(index, 'size', e.target.value)} />
                                             </td>
-                                            <td>
-                                                <span className="print-only-text-node">₹{Number(item.rate || 0).toFixed(2)}</span>
-                                                <InputNumber className="no-print" min={0} variant="borderless" style={{ width: '100%', padding: 0 }} value={item.rate} onChange={(val) => handleRowChange(index, 'rate', val)} />
+                                            <td style={{ textAlign: 'right' }}>
+                                                <span className="print-only-text-node">{item.rate !== null ? `₹${Number(item.rate).toFixed(2)}` : '—'}</span>
+                                                <InputNumber className="no-print" min={0} variant="borderless" style={{ width: '100%', padding: 0 }} value={item.rate} placeholder="—" onChange={(val) => handleRowChange(index, 'rate', val)} />
                                             </td>
-                                            <td style={{ fontWeight: 'bold', background: '#f9f9f9' }}>₹{(item.amount || 0).toFixed(2)}</td>
-                                            <td>
-                                                <span className="print-only-text-node">₹{Number(item.discount || 0).toFixed(2)}</span>
-                                                <InputNumber className="no-print" min={0} variant="borderless" style={{ width: '100%', padding: 0 }} value={item.discount} onChange={(val) => handleRowChange(index, 'discount', val)} />
+                                            <td style={{ textAlign: 'right', background: '#f9f9f9', fontWeight: 'bold' }}>
+                                                {item.product_name ? `₹${(item.amount || 0).toFixed(2)}` : '—'}
                                             </td>
-                                            <td style={{ fontWeight: 'bold', background: '#f9f9f9' }}>₹{(item.taxable || 0).toFixed(2)}</td>
+                                            <td style={{ textAlign: 'right' }}>
+                                                <span className="print-only-text-node">{item.discount !== null ? `₹${Number(item.discount).toFixed(2)}` : '—'}</span>
+                                                <InputNumber className="no-print" min={0} variant="borderless" style={{ width: '100%', padding: 0 }} value={item.discount} placeholder="—" onChange={(val) => handleRowChange(index, 'discount', val)} />
+                                            </td>
+                                            <td style={{ textAlign: 'right', background: '#f9f9f9', fontWeight: 'bold' }}>
+                                                {item.product_name ? `₹${(item.taxable || 0).toFixed(2)}` : '—'}
+                                            </td>
                                             <td style={{ textAlign: 'center' }} className="no-print">
-                                                <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => removeRowItem(index)} />
+                                                <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => handleRowChange(index, 'product_name', '')} />
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-                        <Button type="dashed" icon={<PlusOutlined />} onClick={addRowItem} style={{ marginBottom: '16px', width: '100%', borderRadius: 0, borderColor: '#000000', color: '#000000' }} className="no-print">Add Row Item</Button>
+                        {/* 🚀 ADD EXTRA ROWS RETAINED SAFELY */}
+                        <Button type="dashed" icon={<PlusOutlined />} onClick={() => setItems([...items, ...createFixedBlankRows(1)])} style={{ marginBottom: '16px', width: '100%', borderRadius: 0, borderColor: '#000000', color: '#000000' }} className="no-print">Insert Extra Blank Row</Button>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 310px', gap: '20px', width: '100%', marginTop: '20px', alignItems: 'end' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                                {/* 🚀 FIXED TYPO: Erased the accidental naked bracket marker that was disrupting compiler assembly loops */}
-                                <div style={{ marginBottom: '20px', padding: '8px 4px', borderBottom: '1px dashed #000000', fontSize: '12px', color: '#000000' }}>
-                                    <span style={{ fontWeight: 'bold' }}>Amount Chargeable (in words): </span>
-                                    <span style={{ textTransform: 'uppercase', fontFamily: 'monospace', letterSpacing: '0.5px' }}>Rupees {convertNumberToWords(totals.netTotal)}</span>
-                                </div>
-                                <div style={{ overflowX: 'auto', width: '100%', textAlign: 'left' }}>
-                                    <table className="excel-ledger-table" style={{ width: '100%' }}>
-                                        <thead>
-                                            <tr>
-                                                <th style={{ padding: '8px', border: '1px solid #000000', fontSize: '12px', width: '35%' }}>Bank</th>
-                                                <th style={{ padding: '8px', border: '1px solid #000000', fontSize: '12px', width: '45%' }}>Account No</th>
-                                                <th style={{ padding: '8px', border: '1px solid #000000', fontSize: '12px', width: '22%' }}>IFSC</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td style={{ padding: '6px 8px', border: '1px solid #000000' }}>{bankData.bank1_name}</td>
-                                                <td style={{ padding: '6px 8px', border: '1px solid #000000' }}>{bankData.bank1_ac}</td>
-                                                <td style={{ padding: '6px 8px', border: '1px solid #000000' }}>{bankData.bank1_ifsc}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style={{ padding: '6px 8px', border: '1px solid #000000' }}>{bankData2.bank2_name}</td>
-                                                <td style={{ padding: '6px 8px', border: '1px solid #000000' }}>{bankData2.bank2_ac}</td>
-                                                <td style={{ padding: '6px 8px', border: '1px solid #000000' }}>{bankData2.bank2_ifsc}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div style={{ width: '310px', paddingTop: '10px', color: '#000000', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}><span>Total Taxable Value:</span><span style={{ fontWeight: 'bold' }}>₹{totals.taxableSum.toFixed(2)}</span></div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}><span>Total CGST (2.5%):</span><span>₹{totals.cgst.toFixed(2)}</span></div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}><span>Total SGST (2.5%):</span><span>₹{totals.sgst.toFixed(2)}</span></div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', borderBottom: '1px solid #000000', paddingBottom: '8px' }}><span>Total IGST (5%):</span><span style={{ fontWeight: 'bold' }}>₹{totals.igst.toFixed(2)}</span></div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '17px', borderBottom: '2px double #000000', paddingTop: '6px', paddingBottom: '4px' }}><span style={{ fontWeight: 'bold' }}>Net Total:</span><span style={{ fontWeight: 'bold' }}>₹{totals.netTotal.toFixed(2)}</span></div>
-                                <div className="no-print" style={{ marginTop: '16px', display: 'flex', gap: '10px', width: '100%' }}>
-                                    <Button type="default" onClick={handleSaveDraft} style={{ flex: 1, borderColor: '#000000', color: '#000000', fontWeight: 'bold', borderRadius: 0 }}>Save Invoice</Button>
-                                    <Button type="primary" icon={<PrinterOutlined />} onClick={handleJustPrint} style={{ flex: 1, background: '#000000', borderColor: '#000000', color: '#ffffff', fontWeight: 'bold', borderRadius: 0 }}>Print Bill</Button>
-                                </div>
+                        <div style={{ width: '100%', marginTop: '20px' }}>
+                            <table className="excel-footer-unified-table">
+                                <tbody>
+                                    <tr>
+                                        <td colSpan="6" className="amount-words-banner-cell">
+                                            <strong>Amount Chargeable (in words):</strong> 
+                                            <span style={{ textTransform: 'uppercase', marginLeft: '8px', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                                                Rupees {convertNumberToWords(totals.netTotal)}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan="3" rowSpan="2" style={{ background: '#ffffff', borderBottom: 'none' }}></td>
+                                        <td colSpan="2" className="tax-totals-heading-cell">Total Taxable Value</td>
+                                        <td className="tax-totals-value-cell">₹{totals.taxableSum.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="tax-totals-heading-cell">Total CGST</td>
+                                        <td className="tax-rate-percentage-cell">2.50%</td>
+                                        <td className="tax-totals-value-cell">₹{totals.cgst.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="bank-header-cell" style={{ width: '20%' }}>Bank</td>
+                                        <td className="bank-header-cell" style={{ width: '18%' }}>Account No</td>
+                                        <td className="bank-header-cell" style={{ width: '12%' }}>IFSC</td>
+                                        <td className="tax-totals-heading-cell">Total SGST</td>
+                                        <td className="tax-rate-percentage-cell">2.50%</td>
+                                        <td className="tax-totals-value-cell">₹{totals.sgst.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="bank-data-cell">{bankData.bank1_name}</td>
+                                        <td className="bank-data-cell">{bankData.bank1_ac}</td>
+                                        <td className="bank-data-cell">{bankData.bank1_ifsc}</td>
+                                        <td className="tax-totals-heading-cell">Total IGST</td>
+                                        <td className="tax-rate-percentage-cell">5.00%</td>
+                                        <td className="tax-totals-value-cell">₹{totals.igst.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="bank-data-cell">{bankData2.bank2_name}</td>
+                                        <td className="bank-data-cell">{bankData2.bank2_ac}</td>
+                                        <td className="bank-data-cell">{bankData2.bank2_ifsc}</td>
+                                        <td className="tax-totals-heading-cell">Round Off</td>
+                                        <td className="tax-rate-percentage-cell">—</td>
+                                        <td className="tax-totals-value-cell">
+                                            ₹{(totals.netTotal - (totals.taxableSum + totals.cgst + totals.sgst + totals.igst)).toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan="3" rowSpan="2" className="declaration-terms-cell" style={{ verticalAlign: 'top' }}>
+                                            <strong>Declaration / Terms:</strong><br />
+                                            1) Good once sold cannot be taken back<br />
+                                            2) Erode Jurisdiction only<br />
+                                            3) Interest at 15% will be charged after 30 days
+                                        </td>
+                                        <td colSpan="2" className="net-total-heading-cell">Net Total</td>
+                                        <td className="net-total-value-cell">₹{totals.netTotal.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan="3" className="auth-signature-block-cell">
+                                            <div className="auth-sign-wrapper">
+                                                <span className="auth-company-title">For SRI BANUKRISHNA TEXTILES</span>
+                                                <span className="auth-signature-line">Authorized signature</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div className="no-print" style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                <Button type="default" onClick={handleSaveDraft} style={{ borderColor: '#000000', color: '#000000', fontWeight: 'bold', borderRadius: 0, height: '38px', width: '150px' }}>Save Invoice</Button>
+                                <Button type="primary" icon={<PrinterOutlined />} onClick={handleJustPrint} style={{ background: '#000000', borderColor: '#000000', color: '#ffffff', fontWeight: 'bold', borderRadius: 0, height: '38px', width: '150px' }}>Print Bill</Button>
                             </div>
                         </div>
                     </Form>
