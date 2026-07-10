@@ -1,18 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
-
-// 💡 1. IMPORT THE NEW LOGIN BACKGROUND CSS STYLES
 import '../StyleSheet/LoginPage.css'; 
 
 const { Title } = Typography;
 
 function LoginPage() {
   const navigate = useNavigate();
+  const [form] = Form.useForm();
+  
+  // 🚀 STATE ENGINE: Toggle between login view or sign-up view dynamically
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
 
-  const onLoginSubmit = async (values) => {
+  const handleFormSubmit = async (values) => {
+    const endpoint = isRegisterMode ? '/api/register' : '/api/login';
     try {
-      const response = await fetch('http://localhost:5001/api/login',{
+      const response = await fetch(`http://localhost:5001${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
@@ -21,52 +24,62 @@ function LoginPage() {
       const data = await response.json();
 
       if (data.success) {
-        message.success(data.message || 'Welcome to the portal!');
-        navigate('/dashboard');
+        message.success(data.message || 'Action completed successfully!');
+        if (isRegisterMode) {
+          setIsRegisterMode(false); // Switch back to login view after successful setup
+          form.resetFields();
+        } else {
+          navigate('/dashboard');
+        }
       } else {
-        message.error(data.message || 'Invalid credentials.');
+        message.error(data.message || 'Authentication error.');
       }
     } catch (err) {
       console.error("Connection Error:", err);
-      message.error('Failed to connect to authentication server.');
+      message.error('Failed to communicate with authentication server.');
     }
   };
 
   return (
-    /* 💡 2. APPLY THE FULL SCREEN WRAPPER LAYER HERE */
     <div className="login-page-wrapper">
-      
-      {/* 💡 3. THE CONTAINER USES THE PREMIUM FROSTED SKIN CLASS */}
       <Card className="login-frosted-card">
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <Title level={3} className="login-system-title">Textiles Management Portal</Title>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <Title level={3} className="login-system-title">
+            {isRegisterMode ? 'Create Master Account' : 'Textiles Management Portal'}
+          </Title>
         </div>
 
-        <Form name="login" layout="vertical" onFinish={onLoginSubmit}>
+        <Form form={form} name="auth_form" layout="vertical" onFinish={handleFormSubmit}>
           <Form.Item 
             name="username" 
             label="Username" 
-            rules={[{ required: true, message: 'Please input your username!' }]}
+            rules={[{ required: true, message: 'Please input a username!' }]}
           >
-            <Input size="large" placeholder="Enter registration identifier" />
+            <Input size="large" placeholder="Enter alphanumeric identifier" />
           </Form.Item>
 
           <Form.Item 
             name="password" 
             label="Secure Passkey" 
-            rules={[{ required: true, message: 'Please input your password!' }]}
+            rules={[{ required: true, message: 'Please input your password configuration!' }]}
           >
-            <Input.Password size="large" placeholder="Enter password configuration" />
+            <Input.Password size="large" placeholder="Enter account password" />
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 4 }}>
             <Button type="primary" htmlType="submit" block size="large" style={{ height: '45px', marginTop: '12px', borderRadius: '6px', fontWeight: 'bold' }}>
-              Login
+              {isRegisterMode ? 'Register Account' : 'Login'}
             </Button>
           </Form.Item>
         </Form>
-      </Card>
 
+        {/* 🚀 LINK SWITCHER: Switches layout context dynamically without leaving the viewport */}
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <Button type="link" onClick={() => { setIsRegisterMode(!isRegisterMode); form.resetFields(); }} style={{ color: '#1890ff', padding: 0 }}>
+            {isRegisterMode ? 'Already have an account? Log in here' : "Don't have an account? Create one here"}
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }

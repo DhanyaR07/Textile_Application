@@ -226,7 +226,7 @@ div[style*="overflow-x: auto"]::-webkit-scrollbar {
 @media print {
     @page {
         size: A4 portrait;
-        margin: 8mm 10mm 8mm 10mm; /* Compressed margins for optimal data height usage */
+        margin: 15mm 15mm 15mm 15mm; /* Clean equal margins on all four sides */
     }
 
     /* Hide Web UI Components */
@@ -245,49 +245,147 @@ div[style*="overflow-x: auto"]::-webkit-scrollbar {
         display: none !important;
     }
 
-    /* 🚀 COMPLETE CONTAINER COMPRESSION: Locks page-spillover completely */
+    /* Set up portrait layout space dimensions */
     body, html, .ant-layout, .ant-layout-content, .print-container, .spreadsheet-container {
-        display: block !important;
-        position: static !important;
+        display: flex !important;
+        flex-direction: column !important;
         width: 100% !important;
-        max-width: 185mm !important;
-        height: auto !important;
+        max-width: 100% !important;
+        height: 100vh !important; /* Locks layout cleanly onto exactly one page sheet */
         background: #ffffff !important;
         color: #000000 !important;
         padding: 0 !important;
-        margin: 0 auto !important;
-        overflow: visible !important;
-        /* Uniform layout text scale normalization */
-        zoom: 94%; 
+        margin: 0 !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+        zoom: 100% !important; 
     }
 
+    form {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 !important;
+        height: 100% !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        justify-content: space-between !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Header sizing and font configurations */
     .spreadsheet-branding-header {
-        margin-bottom: 10px !important;
+        width: 100% !important;
+        margin-bottom: 8px !important;
         padding-bottom: 6px !important;
     }
+    
+    .spreadsheet-branding-header input,
+    .spreadsheet-branding-header .print-only-text-node:first-child {
+        font-size: 20px !important; 
+        letter-spacing: 0.5px !important;
+        font-weight: 800 !important;
+        margin-bottom: 4px !important;
+    }
 
-    /* 🚀 MINIFY CELL PADDING HEIGHTS DURING PRINT EXECUTION */
+    /* 🚀 FIXED RECEIVER SEGMENT LAYOUT */
     .receiver-segment-block {
-        margin-bottom: 12px !important;
+        width: calc(100% - 2px) !important; /* Subtracting 2px compensates for border bleeding issues */
+        margin-bottom: 8px !important;
     }
     .receiver-segment-block td {
-        height: 26px !important;
+        height: 24px !important;
         padding: 2px 8px !important;
     }
 
+    /* Dynamic stretch table container metrics */
+    .excel-ledger-table-wrapper {
+        flex: 1 !important; 
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 8px !important;
+        min-height: 0 !important; 
+        overflow: hidden !important;
+    }
+
+    /* 🚀 FIXED LEDGER GRID BORDER MESH STYLE */
+    .excel-ledger-table {
+        width: calc(100% - 2px) !important; /* Subtracting 2px ensures right side border does not get cut off */
+        max-width: 100% !important;
+        height: 100% !important;
+        flex: 1 !important;
+        table-layout: fixed !important; 
+    }
+
+    .excel-ledger-table tbody {
+        display: table-row-group !important;
+        height: 100% !important;
+    }
+
+    .excel-ledger-table tr {
+        height: calc(100% / 11) !important; 
+        width: 100% !important;
+    }
+
+    /* Standardized percentage layout ratios */
+    .excel-ledger-table th:nth-child(1), .excel-ledger-table td:nth-child(1) { width: 5% !important; text-align: center; }
+    .excel-ledger-table th:nth-child(2), .excel-ledger-table td:nth-child(2) { width: 28% !important; text-align: left; }
+    .excel-ledger-table th:nth-child(3), .excel-ledger-table td:nth-child(3) { width: 11% !important; text-align: center; }
+    .excel-ledger-table th:nth-child(4), .excel-ledger-table td:nth-child(4) { width: 8% !important; text-align: center; }
+    .excel-ledger-table th:nth-child(5), .excel-ledger-table td:nth-child(5) { width: 8% !important; text-align: center; }
+    .excel-ledger-table th:nth-child(6), .excel-ledger-table td:nth-child(6) { width: 11% !important; text-align: right; }
+    .excel-ledger-table th:nth-child(7), .excel-ledger-table td:nth-child(7) { width: 13% !important; text-align: right; }
+    .excel-ledger-table th:nth-child(8), .excel-ledger-table td:nth-child(8) { width: 11% !important; text-align: right; }
+    .excel-ledger-table th:nth-child(9), .excel-ledger-table td:nth-child(9) { width: 15% !important; text-align: right; }
+
     .excel-ledger-table td {
-        height: 25px !important; /* Tightens the 10 data rows into a compact vertical space */
         padding: 2px 6px !important;
+        height: auto !important;
+        font-size: 11px !important;
+        white-space: normal !important; 
+        word-break: break-all !important;
+        overflow: hidden !important;
     }
+
     .excel-ledger-table th {
-        padding: 4px 4px !important;
+        padding: 4px 2px !important;
+        height: 26px !important;
+        font-size: 11px !important;
     }
+
+    /* 🚀 FIXED UNIFIED FOOTER STRUCTURAL CONTROLS */
+    .excel-footer-unified-table {
+        width: calc(100% - 2px) !important; /* Subtracting 2px scales the right border line perfectly inside the right margin */
+        max-width: 100% !important;
+        margin-top: auto !important; 
+        table-layout: fixed !important; 
+        page-break-inside: avoid !important;
+    }
+
+    /* Vertical coordinate matching layers */
+    .excel-footer-unified-table td:nth-child(1) { width: 20% !important; }
+    .excel-footer-unified-table td:nth-child(2) { width: 18% !important; }
+    .excel-footer-unified-table td:nth-child(3) { width: 14% !important; }
+    .excel-footer-unified-table td:nth-child(4) { width: 23% !important; }
+    .excel-footer-unified-table td:nth-child(5) { width: 10% !important; }
+    .excel-footer-unified-table td:nth-child(6) { width: 15% !important; }
 
     .excel-footer-unified-table td {
         padding: 4px 6px !important;
+        font-size: 10px !important;
+        white-space: normal !important; 
+        word-break: break-word !important; 
     }
+
+    .amount-words-banner-cell {
+        height: auto !important;
+        min-height: 24px !important;
+        width: 100% !important;
+    }
+
     .auth-sign-wrapper {
-        height: 60px !important; /* Lowers empty signing box buffer space */
+        height: 55px !important;
     }
 
     .print-only-text-node {
@@ -296,24 +394,23 @@ div[style*="overflow-x: auto"]::-webkit-scrollbar {
         font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
         color: #000000 !important;
         white-space: normal !important; 
-        word-break: break-all !important;
+        word-break: break-word !important;
     }
 
-    /* Solidify layout mesh lines without breaking page rules */
+    /* 🚀 SOLID DEEP BLACK INNER AND OUTER GRID BORDER INSTRUCTIONS */
     .receiver-segment-block,
     .excel-ledger-table,
     .excel-footer-unified-table {
-        width: 100% !important;
-        border: 1.5px solid #000000 !important;
-        border-collapse: collapse !important;
-        page-break-inside: avoid !important; /* Strong command enforcing no split pages */
+        border: 2px solid #000000 !important; /* Enhanced 2px width thickness on outer left and right boundaries */
+        border-collapse: collapse !important; 
     }
 
     .receiver-segment-block td,
     .excel-ledger-table td,
     .excel-ledger-table th,
     .excel-footer-unified-table td {
-        border: 1px solid #000000 !important;
+        border: 1px solid #000000 !important; 
+        border-right: 1.5px solid #000000 !important; /* Force explicit dark border-right values on cells */
         color: #000000 !important;
     }
 }

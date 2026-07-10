@@ -73,11 +73,12 @@ function OrderPage() {
         updated[index][field] = value;
 
         if (field === 'Product_Name') {
-            const matched = products.find(p => p.Products === value);
+            // 🚀 UPDATED: Checks against the "lable" key from your database schema instead of item description
+            const matched = products.find(p => p.lable === value);
             if (matched) {
-                updated[index].HSN_Code = matched.HSN_Code || '';
-                updated[index].Size = matched.Size || '';
-                updated[index].Rate = Number(matched.Rate || 0);
+                updated[index].HSN_Code = matched.HSN_Code || '5402'; 
+                updated[index].Size = matched.size || '';             
+                updated[index].Rate = Number(matched.Rate || 25.00);  
                 updated[index].Discount = Number(matched.Discount || 0);
                 updated[index].QTY = 1; 
             }
@@ -109,7 +110,7 @@ function OrderPage() {
                         State_Code: customerMeta.State_Code,
                         GSTIN_NO: customerMeta.GSTIN_NO,
                         Phone_no: customerMeta.Phone_no,
-                        Product_Name: item.Product_Name,
+                        Product_Name: item.Product_Name, // 🚀 This will now contain the 'lable' value string
                         HSN_Code: item.HSN_Code,
                         QTY: item.QTY,
                         Size: item.Size,
@@ -253,7 +254,7 @@ function OrderPage() {
 
     const expandedRowRender = (record) => {
         const nestedColumns = [
-            { title: 'Product Name', dataIndex: 'Product_Name', key: 'Product_Name', render: t => <strong>{t}</strong> },
+            { title: 'Label / Brand Name', dataIndex: 'Product_Name', key: 'Product_Name', render: t => <strong>{t}</strong> },
             { title: 'HSN Code', dataIndex: 'HSN_Code', key: 'HSN_Code' },
             { title: 'Size', dataIndex: 'Size', key: 'Size' },
             { title: 'Qty Ordered', dataIndex: 'QTY', key: 'QTY' },
@@ -328,7 +329,7 @@ function OrderPage() {
                                 <thead>
                                     <tr style={{ background: '#fafafa' }}>
                                         <th style={{ width: '5%', padding: '10px' }}>No</th>
-                                        <th style={{ width: '30%', padding: '10px' }}>Select Product Item</th>
+                                        <th style={{ width: '30%', padding: '10px' }}>Select Label / Brand</th>
                                         <th style={{ width: '12%', padding: '10px' }}>HSN Code</th>
                                         <th style={{ width: '10%', padding: '10px' }}>QTY</th>
                                         <th style={{ width: '10%', padding: '10px' }}>Size</th>
@@ -343,8 +344,9 @@ function OrderPage() {
                                         <tr key={item.id}>
                                             <td style={{ textAlign: 'center', padding: '6px', border: '1px solid #d9d9d9' }}>{index + 1}</td>
                                             <td style={{ padding: '6px', border: '1px solid #d9d9d9' }}>
-                                                <Select showSearch style={{ width: '100%' }} placeholder="Select product stock" value={item.Product_Name || undefined} onChange={(val) => handleRowChange(index, 'Product_Name', val)}>
-                                                    {products.map(p => <Option key={p.Products} value={p.Products}>{p.Products}</Option>)}
+                                                <Select showSearch style={{ width: '100%' }} placeholder="Select product label brand" value={item.Product_Name || undefined} onChange={(val) => handleRowChange(index, 'Product_Name', val)}>
+                                                    {/* 🚀 UPDATED: Maps product stock list drop downs dynamically using p.lable instead of item description */}
+                                                    {products.map((p, idx) => <Option key={`${p.lable}-${idx}`} value={p.lable}>{p.lable}</Option>)}
                                                 </Select>
                                             </td>
                                             <td style={{ padding: '6px', border: '1px solid #d9d9d9' }}><Input value={item.HSN_Code} readOnly style={{ background: '#f5f5f5' }} /></td>
@@ -403,20 +405,19 @@ function OrderPage() {
                 </Content>
             </Layout>
 
-            {/* 🔍 FIND THIS MODAL TAG AT THE BOTTOM OF YOUR ORDERPAGE OR INVOICEPAGE */}
-<Modal 
-    title={`Modify Items Grid for Invoice: ${editingInvoiceNo}`} 
-    open={isEditModalVisible} 
-    onOk={handleSaveEditedOrder} 
-    onCancel={() => setIsEditModalVisible(false)} 
-    width={900}
-    destroyOnHidden 
-    styles={{ body: { padding: '15px' } }} // 🚀 FIXED: Swapped from bodyStyle to styles.body
->
+            <Modal 
+                title={`Modify Items Grid for Invoice: ${editingInvoiceNo}`} 
+                open={isEditModalVisible} 
+                onOk={handleSaveEditedOrder} 
+                onCancel={() => setIsEditModalVisible(false)} 
+                width={900}
+                destroyOnClose 
+                styles={{ body: { padding: '15px' } }}
+            >
                 <table className="excel-ledger-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #d9d9d9', marginTop: '15px' }}>
                     <thead>
                         <tr style={{ background: '#fafafa' }}>
-                            <th style={{ padding: '8px', border: '1px solid #d9d9d9' }}>Item Product Name</th>
+                            <th style={{ padding: '8px', border: '1px solid #d9d9d9' }}>Item Label Brand</th>
                             <th style={{ padding: '8px', border: '1px solid #d9d9d9', width: '15%' }}>Size</th>
                             <th style={{ padding: '8px', border: '1px solid #d9d9d9', width: '15%' }}>Qty</th>
                             <th style={{ padding: '8px', border: '1px solid #d9d9d9', width: '15%' }}>Rate</th>

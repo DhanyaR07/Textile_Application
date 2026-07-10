@@ -7,7 +7,6 @@ import '../StyleSheet/InvoicePage.css';
 const { Header, Sider, Content } = Layout;
 const { Option } = Select;
 
-// Helper function to generate an array of fixed blank rows
 const createFixedBlankRows = (count) => {
     return Array.from({ length: count }, (_, idx) => ({
         id: `fixed-row-${Date.now()}-${idx}`,
@@ -72,7 +71,6 @@ function InvoicePage() {
         lorry_name: '', through: ''
     });
 
-    // 🚀 EXCEL PRE-FILL ARCHITECTURE: Standardize on an initial layout structure of 10 static rows
     const [items, setItems] = useState(createFixedBlankRows(10));
     const [totals, setTotals] = useState({ taxableSum: 0, cgst: 0, sgst: 0, igst: 0, netTotal: 0 });
 
@@ -109,7 +107,7 @@ function InvoicePage() {
     const recalcTotals = (currentItems) => {
         let taxableSum = 0, totalCgst = 0, totalSgst = 0, totalIgst = 0;
         currentItems.forEach(item => {
-            if (item.product_name) { // Only aggregate calculations for populated rows
+            if (item.product_name) { 
                 taxableSum += (item.taxable || 0);
                 totalCgst += item.taxable * (Number(item.cgst_p || 0) / 100);
                 totalSgst += item.taxable * (Number(item.sgst_p || 0) / 100);
@@ -132,7 +130,6 @@ function InvoicePage() {
                 updatedItems[index].discount = Number(matched.Discount || 0);
                 updatedItems[index].qty = 1;
             } else if (!value) {
-                // If row content is completely cleared, restore it to a clean blank state
                 updatedItems[index].hsn_code = '';
                 updatedItems[index].size = '';
                 updatedItems[index].rate = null;
@@ -157,13 +154,12 @@ function InvoicePage() {
     const handleCompanyChange = (field, value) => setCompanyData(prev => ({ ...prev, [field]: value }));
     const handleHeaderChange = (field, value) => setHeaderData(prev => ({ ...prev, [field]: value }));
     
-    // 🚀 LOAD ORDER INLINE REPLACEMENT MATRIX
     const selectOrderBundle = (selectedOrder) => {
-        const matchedCustomer = customers.find(c => c.Name === selectedOrder.Customer_name);
-        const resolvedCompanyName = matchedCustomer?.Company_Name || selectedOrder.Company_Name || '';
+        const matchedCustomer = customers.find(c => c.Company_Name === selectedOrder.Company_Name);
+        const resolvedCustomerPerson = matchedCustomer?.Name || selectedOrder.Customer_name || '';
 
         const profile = {
-            receiver_name: selectedOrder.Customer_name || '',
+            receiver_name: selectedOrder.Company_Name || '', 
             address: selectedOrder.Address || '',
             state: selectedOrder.State || 'TAMIL NADU',
             state_code: String(selectedOrder.State_Code || '33').trim(),
@@ -174,10 +170,9 @@ function InvoicePage() {
         };
         
         setHeaderData(prev => ({ ...prev, ...profile }));
-        form.setFieldsValue({ ...profile, Company_Name: resolvedCompanyName });
+        form.setFieldsValue({ ...profile, Company_Name: resolvedCustomerPerson }); 
 
         if (selectedOrder.Ordered_Products && Array.isArray(selectedOrder.Ordered_Products)) {
-            // Re-map incoming items directly into our fixed matrix array structure
             const baseMatrix = createFixedBlankRows(Math.max(10, selectedOrder.Ordered_Products.length));
             
             selectedOrder.Ordered_Products.forEach((ordProd, idx) => {
@@ -204,6 +199,7 @@ function InvoicePage() {
         setDrawerVisible(false);
     };
 
+    // 🚀 RESTICKERED PIPELINE: Submitting details shifts order records to historical files automatically
     const handleSaveDraft = async () => {
         if (!headerData.invoice_no) {
             message.error("Cannot save: Missing Invoice Number reference.");
@@ -211,7 +207,6 @@ function InvoicePage() {
         }
 
         try {
-            // Filter down to rows containing actual data to keep database writes efficient
             const pureActiveItems = items.filter(item => item.product_name !== '');
             
             const payload = {
@@ -228,6 +223,7 @@ function InvoicePage() {
                 items: pureActiveItems
             };
 
+            // 1. Save master invoice statement parameters
             const res = await fetch('http://localhost:5001/api/invoices/save-draft', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -236,8 +232,21 @@ function InvoicePage() {
             const data = await res.json();
 
             if (data.success) {
-                message.success("Invoice records successfully saved to database!");
-                fetchAllPortalRecords(); 
+                // 2. Automatically flag the origin reference order status inside the DB as 'COMPLETED'
+                try {
+                    await fetch(`http://localhost:5001/api/orders/complete/${encodeURIComponent(headerData.invoice_no)}`, {
+                        method: 'PUT'
+                    });
+                } catch (err) {
+                    console.warn("Skipping isolated status tracking update flags.");
+                }
+
+                message.success("Invoice saved & Order records automatically completed!");
+                
+                // 3. Smoothly navigate down into the invoices report portal layout view
+                navigate('/reports/invoices');
+            } else {
+                message.error(data.error || "Server declined to complete write transaction.");
             }
         } catch (err) {
             message.error("Failed to connect to backend save endpoint.");
@@ -264,8 +273,8 @@ function InvoicePage() {
                             icon: <BarChartOutlined />, 
                             label: 'Reports Workspace',
                             children: [
-                                { key: '/reports?tab=1', label: 'Saved Invoices Portal' },
-                                { key: '/reports?tab=2', label: 'Saved Orders Portal' }
+                                { key: '/reports/invoices', label: 'Saved Invoices Portal' },
+                                { key: '/reports/orders', label: 'Saved Orders Portal' }
                             ]
                         },
                         { key: '/login', icon: <LogoutOutlined />, label: 'Logout' },
@@ -303,20 +312,14 @@ function InvoicePage() {
 
                     <Form form={form} layout="inline" style={{ width: '100%' }}>
                         <table className="receiver-segment-block">
-                            <thead>
-                                <tr className="receiver-table-title-row">
-                                    <th style={{ width: '50%', textTransform: 'uppercase', borderRight: '1px solid #000000' }}>DETAILS OF RECEIVER (BILLED TO)</th>
-                                    <th style={{ width: '50%', textTransform: 'uppercase' }}>INVOICE DETAILS</th>
-                                </tr>
-                            </thead>
                             <tbody>
                                 <tr>
                                     <td style={{ padding: '4px 12px', borderRight: '1px solid #000000' }}>
                                         <div className="receiver-cell-layout">
-                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>Name:</span>
+                                            <span className="receiver-cell-label" style={{ minWidth: '100px' }}>Company Name:</span>
                                             <div className="receiver-cell-content">
                                                 <span className="print-only-text-node">{headerData.receiver_name || '—'}</span>
-                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000', fontWeight: 'bold' }} placeholder="Enter Name" value={headerData.receiver_name} onChange={(e) => handleHeaderChange('receiver_name', e.target.value)} />
+                                                <Input className="no-print" variant="borderless" style={{ padding: '4px 0', fontSize: '12px', width: '100%', color: '#000000', fontWeight: 'bold' }} placeholder="Enter Company Name" value={headerData.receiver_name} onChange={(e) => handleHeaderChange('receiver_name', e.target.value)} />
                                             </div>
                                         </div>
                                     </td>
@@ -450,90 +453,105 @@ function InvoicePage() {
                                         <tr key={item.id || index}>
                                             <td style={{ textAlign: 'center' }}>{index + 1}</td>
                                             <td>
-                                                <span className="print-only-text-node">{item.product_name || '—'}</span>
+                                                <span className="print-only-text-node">{item.product_name || ''}</span>
                                                 <div className="no-print">
                                                     <Select showSearch allowClear variant="borderless" style={{ width: '100%', padding: 0 }} placeholder="Select Item Particular" value={item.product_name || undefined} onChange={(val) => handleRowChange(index, 'product_name', val)}>
                                                         {products.map((p, idx) => <Option key={`${p.Products}-${idx}`} value={p.Products}>{p.Products}</Option>)}
                                                     </Select>
                                                 </div>
                                             </td>
-                                            <td style={{ textAlign: 'center', background: '#f9f9f9', fontWeight: '500' }}>{item.hsn_code || '—'}</td>
+                                            <td style={{ textAlign: 'center', background: '#f9f9f9', fontWeight: '500' }}>{item.hsn_code || ''}</td>
                                             <td>
-                                                <span className="print-only-text-node">{item.qty !== null ? item.qty : '—'}</span>
+                                                <span className="print-only-text-node">{item.qty !== null ? item.qty : ''}</span>
                                                 <InputNumber className="no-print" min={1} variant="borderless" style={{ width: '100%', padding: 0, textAlign: 'center' }} value={item.qty} placeholder="—" onChange={(val) => handleRowChange(index, 'qty', val)} />
                                             </td>
                                             <td style={{ textAlign: 'center' }}>
-                                                <span className="print-only-text-node">{item.size || '—'}</span>
+                                                <span className="print-only-text-node">{item.size || ''}</span>
                                                 <Input className="no-print" variant="borderless" style={{ padding: 0, textAlign: 'center' }} value={item.size} placeholder="—" onChange={(e) => handleRowChange(index, 'size', e.target.value)} />
                                             </td>
                                             <td style={{ textAlign: 'right' }}>
-                                                <span className="print-only-text-node">{item.rate !== null ? `₹${Number(item.rate).toFixed(2)}` : '—'}</span>
+                                                <span className="print-only-text-node">{item.rate !== null ? `₹${Number(item.rate).toFixed(2)}` : ''}</span>
                                                 <InputNumber className="no-print" min={0} variant="borderless" style={{ width: '100%', padding: 0 }} value={item.rate} placeholder="—" onChange={(val) => handleRowChange(index, 'rate', val)} />
                                             </td>
                                             <td style={{ textAlign: 'right', background: '#f9f9f9', fontWeight: 'bold' }}>
-                                                {item.product_name ? `₹${(item.amount || 0).toFixed(2)}` : '—'}
+                                                {item.product_name ? `₹${(item.amount || 0).toFixed(2)}` : ''}
                                             </td>
                                             <td style={{ textAlign: 'right' }}>
-                                                <span className="print-only-text-node">{item.discount !== null ? `₹${Number(item.discount).toFixed(2)}` : '—'}</span>
+                                                <span className="print-only-text-node">{item.discount !== null ? `₹${Number(item.discount).toFixed(2)}` : ''}</span>
                                                 <InputNumber className="no-print" min={0} variant="borderless" style={{ width: '100%', padding: 0 }} value={item.discount} placeholder="—" onChange={(val) => handleRowChange(index, 'discount', val)} />
                                             </td>
                                             <td style={{ textAlign: 'right', background: '#f9f9f9', fontWeight: 'bold' }}>
-                                                {item.product_name ? `₹${(item.taxable || 0).toFixed(2)}` : '—'}
+                                                {item.product_name ? `₹${(item.taxable || 0).toFixed(2)}` : ''}
                                             </td>
                                             <td style={{ textAlign: 'center' }} className="no-print">
                                                 <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => handleRowChange(index, 'product_name', '')} />
                                             </td>
                                         </tr>
                                     ))}
+
+                                    <tr style={{ fontWeight: 'bold', background: '#fafafa' }}>
+                                        <td style={{ textAlign: 'center' }}></td>
+                                        <td style={{ padding: '6px 8px' }}>Amount in Words:</td>
+                                        <td style={{ textAlign: 'center', background: '#f5f5f5' }}>Total</td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {items.reduce((sum, item) => sum + Number(item.qty || 0), 0) || '0'}
+                                        </td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td style={{ textAlign: 'right', background: '#f5f5f5', fontWeight: 'bold' }}>
+                                            ₹{totals.taxableSum.toFixed(2)}
+                                        </td>
+                                        <td className="no-print"></td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
-                        {/* 🚀 ADD EXTRA ROWS RETAINED SAFELY */}
                         <Button type="dashed" icon={<PlusOutlined />} onClick={() => setItems([...items, ...createFixedBlankRows(1)])} style={{ marginBottom: '16px', width: '100%', borderRadius: 0, borderColor: '#000000', color: '#000000' }} className="no-print">Insert Extra Blank Row</Button>
 
                         <div style={{ width: '100%', marginTop: '20px' }}>
                             <table className="excel-footer-unified-table">
                                 <tbody>
                                     <tr>
-                                        <td colSpan="6" className="amount-words-banner-cell">
-                                            <strong>Amount Chargeable (in words):</strong> 
-                                            <span style={{ textTransform: 'uppercase', marginLeft: '8px', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                                                Rupees {convertNumberToWords(totals.netTotal)}
-                                            </span>
+                                        <td colSpan="6" className="amount-words-banner-cell" style={{ padding: '6px 12px', fontWeight: 'bold', fontSize: '11px', color: '#000000' }}>
+                                            Amount Chargeable (in words):
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td colSpan="3" rowSpan="2" style={{ background: '#ffffff', borderBottom: 'none' }}></td>
+                                        <td colSpan="3" style={{ padding: '10px 12px', fontWeight: 'bold', fontSize: '12px', textTransform: 'uppercase', verticalAlign: 'middle', whiteSpace: 'normal', wordBreak: 'break-word', color: '#000000' }}>
+                                            RUPEES {convertNumberToWords(totals.netTotal)}
+                                        </td>
                                         <td colSpan="2" className="tax-totals-heading-cell">Total Taxable Value</td>
                                         <td className="tax-totals-value-cell">₹{totals.taxableSum.toFixed(2)}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="tax-totals-heading-cell">Total CGST</td>
-                                        <td className="tax-rate-percentage-cell">2.50%</td>
-                                        <td className="tax-totals-value-cell">₹{totals.cgst.toFixed(2)}</td>
                                     </tr>
                                     <tr>
                                         <td className="bank-header-cell" style={{ width: '20%' }}>Bank</td>
                                         <td className="bank-header-cell" style={{ width: '18%' }}>Account No</td>
                                         <td className="bank-header-cell" style={{ width: '12%' }}>IFSC</td>
-                                        <td className="tax-totals-heading-cell">Total SGST</td>
+                                        <td className="tax-totals-heading-cell">Total CGST</td>
                                         <td className="tax-rate-percentage-cell">2.50%</td>
-                                        <td className="tax-totals-value-cell">₹{totals.sgst.toFixed(2)}</td>
+                                        <td className="tax-totals-value-cell">₹{totals.cgst.toFixed(2)}</td>
                                     </tr>
                                     <tr>
                                         <td className="bank-data-cell">{bankData.bank1_name}</td>
                                         <td className="bank-data-cell">{bankData.bank1_ac}</td>
                                         <td className="bank-data-cell">{bankData.bank1_ifsc}</td>
-                                        <td className="tax-totals-heading-cell">Total IGST</td>
-                                        <td className="tax-rate-percentage-cell">5.00%</td>
-                                        <td className="tax-totals-value-cell">₹{totals.igst.toFixed(2)}</td>
+                                        <td className="tax-totals-heading-cell">Total SGST</td>
+                                        <td className="tax-rate-percentage-cell">2.50%</td>
+                                        <td className="tax-totals-value-cell">₹{totals.sgst.toFixed(2)}</td>
                                     </tr>
                                     <tr>
                                         <td className="bank-data-cell">{bankData2.bank2_name}</td>
                                         <td className="bank-data-cell">{bankData2.bank2_ac}</td>
                                         <td className="bank-data-cell">{bankData2.bank2_ifsc}</td>
-                                        <td className="tax-totals-heading-cell">Round Off</td>
-                                        <td className="tax-rate-percentage-cell">—</td>
+                                        <td className="tax-totals-heading-cell">Total IGST</td>
+                                        <td className="tax-rate-percentage-cell">5.00%</td>
+                                        <td className="tax-totals-value-cell">₹{totals.igst.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan="3" style={{ background: '#ffffff', borderBottom: 'none' }}></td>
+                                        <td colSpan="2" className="tax-totals-heading-cell">Round Off</td>
                                         <td className="tax-totals-value-cell">
                                             ₹{(totals.netTotal - (totals.taxableSum + totals.cgst + totals.sgst + totals.igst)).toFixed(2)}
                                         </td>

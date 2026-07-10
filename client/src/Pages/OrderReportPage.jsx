@@ -9,7 +9,6 @@ const { Title } = Typography;
 function OrderReportPage() {
     const navigate = useNavigate();
     const [completedOrders, setCompletedOrders] = useState([]);
-    const [pendingOrders, setPendingOrders] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const loadData = async () => {
@@ -19,8 +18,8 @@ function OrderReportPage() {
             const data = await res.json();
             if (data.success) {
                 const allOrders = data.data || [];
+                // 🚀 Automatically reflects order bundles loaded and marked completed by the billing invoice workspace
                 setCompletedOrders(allOrders.filter(o => o.Ordered_Products[0]?.Order_Status === 'COMPLETED'));
-                setPendingOrders(allOrders.filter(o => o.Ordered_Products[0]?.Order_Status !== 'COMPLETED'));
             }
         } catch (err) {
             message.error("Failed to load historical database records.");
@@ -46,7 +45,7 @@ function OrderReportPage() {
 
     const renderPurchasedItemsSubTable = (orderedProductsArray) => {
         const nestedColumns = [
-            { title: 'Product Name', dataIndex: 'Product_Name', key: 'Product_Name', render: t => <strong>{t}</strong> },
+            { title: 'Label / Brand Name', dataIndex: 'Product_Name', key: 'Product_Name', render: t => <strong>{t}</strong> },
             { title: 'HSN Code', dataIndex: 'HSN_Code', key: 'HSN_Code' },
             { title: 'Size', dataIndex: 'Size', key: 'Size' },
             { title: 'Qty', dataIndex: 'QTY', key: 'QTY' },
@@ -97,13 +96,10 @@ function OrderReportPage() {
                 </Header>
 
                 <Content style={{ padding: '24px', background: '#fff', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    
-                    {/* Part 2: Completed Orders */}
                     <div>
                         <Title level={5} style={{ marginBottom: '12px', color: '#52c41a' }}>Completed Orders History</Title>
                         <Table dataSource={completedOrders} columns={[...orderColumns, { title: 'Actions', render: (_, rec) => <Popconfirm title="Delete order history?" onConfirm={() => deleteOrderBundle(rec.Invoice_No)} okButtonProps={{ danger: true }}><Button type="text" danger icon={<DeleteOutlined />} /></Popconfirm> }]} rowKey="Invoice_No" size="small" loading={loading} bordered={false} pagination={{ pageSize: 5 }} expandable={{ expandedRowRender: (rec) => renderPurchasedItemsSubTable(rec.Ordered_Products) }} />
                     </div>
-
                 </Content>
             </Layout>
         </Layout>

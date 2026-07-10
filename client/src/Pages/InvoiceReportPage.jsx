@@ -38,7 +38,6 @@ function InvoiceReportPage() {
     const [selectedBillItems, setSelectedBillItems] = useState([]);
     const [allRawOrders, setAllRawOrders] = useState([]);
     
-    // States for Edit Modal parameters
     const [isEditInvoiceVisible, setIsEditInvoiceVisible] = useState(false);
     const [editingInvoiceNo, setEditingInvoiceNo] = useState('');
 
@@ -92,7 +91,13 @@ function InvoiceReportPage() {
         setEditingInvoiceNo(record.Invoice_No || record.invoice_no);
         invoiceForm.setFieldsValue({
             ...record,
-            Lorry_Name: record.Lorry_Name || record.lorry_name || ''
+            Customer_Name: record.Customer_Name || record.customer_name || '',
+            Company_Name: record.Company_Name || record.company_name || '',
+            Bale_No: record.Bale_No || record.bale_no || '',
+            LR_No: record.LR_No || record.lr_no || '',
+            Lorry_Name: record.Lorry_Name || record.lorry_name || '',
+            Total_Taxable: record.Total_Taxable || record.total_taxable || 0,
+            Net_Total: record.Net_Total || record.net_total || 0
         });
         setIsEditInvoiceVisible(true);
     };
@@ -116,18 +121,56 @@ function InvoiceReportPage() {
         }
     };
 
+    // 🚀 FIXED: Added fallback render checks to capture both CamelCase and lowercase database variants
     const invoiceColumns = [
-        { title: 'Invoice No', dataIndex: 'Invoice_No', key: 'Invoice_No', render: t => <strong style={{ color: '#1890ff' }}>{t}</strong> },
-        { title: 'Customer Name', dataIndex: 'Customer_Name', key: 'Customer_Name' },
-        { title: 'Company Name', dataIndex: 'Company_Name', key: 'Company_Name' },
-        { title: 'Invoice Date', dataIndex: 'Invoice_Date', key: 'Invoice_Date', render: d => d ? new Date(d).toLocaleDateString('en-IN') : '—' },
-        { title: 'Bale No', dataIndex: 'Bale_No', key: 'Bale_No', render: b => b ? <Tag color="orange">{b}</Tag> : '—' },
+        { 
+            title: 'Invoice No', 
+            dataIndex: 'Invoice_No', 
+            key: 'Invoice_No', 
+            render: (t, r) => <strong style={{ color: '#1890ff' }}>{t || r.invoice_no}</strong> 
+        },
+        { 
+            title: 'Customer Name', 
+            dataIndex: 'Customer_Name', 
+            key: 'Customer_Name', 
+            render: (t, r) => t || r.customer_name || '—' 
+        },
+        { 
+            title: 'Company Name', 
+            dataIndex: 'Company_Name', 
+            key: 'Company_Name', 
+            render: (t, r) => t || r.company_name || '—' 
+        },
+        { 
+            title: 'Invoice Date', 
+            dataIndex: 'Invoice_Date', 
+            key: 'Invoice_Date', 
+            render: (d, r) => {
+                const dateVal = d || r.invoice_date;
+                return dateVal ? new Date(dateVal).toLocaleDateString('en-IN') : '—';
+            }
+        },
+        { 
+            title: 'Bale No', 
+            dataIndex: 'Bale_No', 
+            key: 'Bale_No', 
+            render: (b, r) => { 
+                const bn = b || r.bale_no; 
+                return bn && bn !== '—' && bn !== '--' ? <Tag color="orange">{bn}</Tag> : '—'; 
+            } 
+        },
         { 
             title: 'Lorry Carrier', 
             key: 'Lorry_Name', 
             render: (_, record) => <span style={{ fontWeight: '500' }}>{record.Lorry_Name || record.lorry_name || '—'}</span> 
         },
-        { title: 'Net Total', dataIndex: 'Net_Total', key: 'Net_Total', align: 'right', render: v => <strong>₹{Number(v).toFixed(2)}</strong> },
+        { 
+            title: 'Net Total', 
+            dataIndex: 'Net_Total', 
+            key: 'Net_Total', 
+            align: 'right', 
+            render: (v, r) => <strong>₹{Number(v || r.net_total || 0).toFixed(2)}</strong> 
+        },
         { 
             title: 'Actions Workflow', 
             key: 'action', 
@@ -176,11 +219,10 @@ function InvoiceReportPage() {
                 </Header>
 
                 <Content style={{ padding: '24px', background: '#fff' }}>
-                    <Table dataSource={savedInvoices} columns={invoiceColumns} rowKey="id" size="small" loading={loading} bordered={false} pagination={{ pageSize: 10 }} />
+                    <Table dataSource={savedInvoices} columns={invoiceColumns} rowKey={(record) => record.Invoice_No || record.invoice_no || record.id || Math.random()} size="small" loading={loading} bordered={false} pagination={{ pageSize: 10 }} />
                 </Content>
             </Layout>
 
-            {/* Edit Invoice Summary Modal */}
             <Modal title="Modify Invoice summary parameters" open={isEditInvoiceVisible} onOk={handleUpdateInvoiceSummary} onCancel={() => setIsEditInvoiceVisible(false)} destroyOnHidden>
                 <Form form={invoiceForm} layout="vertical">
                     <Form.Item name="Customer_Name" label="Client Name" rules={[{ required: true }]}><Input /></Form.Item>
@@ -193,26 +235,15 @@ function InvoiceReportPage() {
                 </Form>
             </Modal>
 
-            {/* 🖨️ PRINT PREVIEW POPUP MODAL SCREEN */}
-            <Modal 
-                title={null} 
-                footer={null} 
-                open={billModalVisible} 
-                onCancel={() => setBillModalVisible(false)} 
-                width={850} 
-                centered 
-                styles={{ body: { padding: '20px' } }}
-            >
+            <Modal title={null} footer={null} open={billModalVisible} onCancel={() => setBillModalVisible(false)} width={850} centered styles={{ body: { padding: '20px' } }}>
                 {selectedBill && (
                     <div id="printable-bill-invoice-node" style={{ color: '#000000', fontFamily: 'serif' }}>
-                        {/* Company Identity Header */}
                         <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '8px', marginBottom: '12px' }}>
                             <Title level={3} style={{ margin: 0, fontWeight: 'bold', color: '#000', fontFamily: 'serif' }}>SRI BANUKRISHNA TEXTILES</Title>
                             <Text style={{ fontSize: '13px', display: 'block', color: '#000' }}>408/A, Anaikattu Road, Rajiv Nagar, Surampatti Valasu, Erode - 638009</Text>
                             <Text style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#000' }}>Prop: S.R. Krishnan &nbsp;|&nbsp; Mobile: 9443840784&nbsp;|&nbsp; GSTIN: 33AIUPK8316R3ZB</Text>
                         </div>
 
-                        {/* Customer & Shipping Summary Grid */}
                         <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '12px', marginBottom: '12px' }}>
                             <tbody>
                                 <tr style={{ background: '#f5f5f5', borderBottom: '1px solid #000' }}>
@@ -222,20 +253,18 @@ function InvoiceReportPage() {
                                 <tr>
                                     <td style={{ padding: '8px', borderRight: '1px solid #000', verticalAlign: 'top', lineHeight: '1.6', color: '#000' }}>
                                         <strong>Receiver Name:</strong> {selectedBill.Customer_Name || selectedBill.customer_name || '—'}<br />
-                                        <strong>Address:</strong> {selectedBill.Company_Name || selectedBill.company_name || '—'}
+                                        <strong>Address:</strong> {selectedBill.Company_Name || selectedBill.company_name || selectedBill.Address || selectedBill.address || '—'}
                                     </td>
                                     <td style={{ padding: '8px', verticalAlign: 'top', lineHeight: '1.6', color: '#000' }}>
                                         <strong>Invoice No:</strong> <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{selectedBill.Invoice_No || selectedBill.invoice_no || '—'}</span><br />
-                                        <strong>Date:</strong> {selectedBill.Invoice_Date ? new Date(selectedBill.Invoice_Date).toLocaleDateString('en-IN') : '—'}<br />
+                                        <strong>Date:</strong> {selectedBill.Invoice_Date || selectedBill.invoice_date ? new Date(selectedBill.Invoice_Date || selectedBill.invoice_date).toLocaleDateString('en-IN') : '—'}<br />
                                         <strong>BALE No:</strong> {selectedBill.Bale_No || selectedBill.bale_no || '—'} &nbsp;|&nbsp; <strong>LR No:</strong> {selectedBill.LR_No || selectedBill.lr_no || '—'}<br />
-                                        {/* 🚀 FIXED LOGISTICS CELL: Support case variations securely */}
                                         <strong>Lorry:</strong> {selectedBill.Lorry_Name || selectedBill.lorry_name || '—'}
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        {/* Items Mapping Breakdown Grid */}
                         <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '12px', marginBottom: '12px' }}>
                             <thead>
                                 <tr style={{ background: '#f5f5f5', borderBottom: '1px solid #000' }}>
@@ -262,14 +291,13 @@ function InvoiceReportPage() {
                                 ) : (
                                     <tr>
                                         <td colSpan={6} style={{ padding: '12px', textAlign: 'center', color: '#999', fontStyle: 'italic' }}>
-                                            Item descriptions loaded from matching completion records.
+                                            No matching item definitions discovered inside completion logs.
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
 
-                        {/* Tax Calculations and Bank Metadata Column */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.1fr', gap: '15px', border: '1px solid #000', fontSize: '12px', padding: '8px', marginBottom: '15px' }}>
                             <div>
                                 <div style={{ marginBottom: '8px', color: '#000' }}>
@@ -283,10 +311,13 @@ function InvoiceReportPage() {
                                         <tr style={{ color: '#000' }}><td><strong>CUB Account:</strong> 059109000018565</td><td><strong>IFSC:</strong> CIUB0000306</td></tr>
                                         <tr style={{ color: '#000' }}><td><strong>PNB Account:</strong> 0165002100045817</td><td><strong>IFSC:</strong> PUNB0016500</td></tr>
                                     </tbody>
-                                end</table>
+                                </table>
                             </div>
                             <div style={{ borderLeft: '1px solid #000', paddingLeft: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px', color: '#000' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total Taxable Value:</span><span>₹{Number(selectedBill.Total_Taxable || selectedBill.total_taxable || 0).toFixed(2)}</span></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Total Taxable Value:</span>
+                                    <span>₹{Number(selectedBill.Total_Taxable || selectedBill.total_taxable || 0).toFixed(2)}</span>
+                                </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold', paddingTop: '4px', borderTop: '1px solid #ddd' }}>
                                     <span>Net Grand Total:</span>
                                     <span style={{ color: '#52c41a' }}>₹{Number(selectedBill.Net_Total || selectedBill.net_total || 0).toFixed(2)}</span>
@@ -294,7 +325,6 @@ function InvoiceReportPage() {
                             </div>
                         </div>
 
-                        {/* Operational Buttons */}
                         <div style={{ textAlign: 'right', marginTop: '15px' }} className="no-print">
                             <Space>
                                 <Button onClick={() => setBillModalVisible(false)}>Close Preview</Button>

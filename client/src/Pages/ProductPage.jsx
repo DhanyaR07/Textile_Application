@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Card, Button, Form, Input, InputNumber, Table, Space, Popconfirm, Modal, message } from 'antd';
+import { Layout, Menu, Card, Button, Form, Input, Table, Space, Popconfirm, Modal, message } from 'antd';
 import { DashboardOutlined, FileTextOutlined, ShoppingCartOutlined, UserOutlined, LogoutOutlined, PlusOutlined, DeleteOutlined, EditOutlined, BarChartOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import '../StyleSheet/ProductPage.css';
@@ -16,8 +16,6 @@ function ProductsPage() {
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
-    
-    // 🚀 NEW: Add a Search String State Variable
     const [searchText, setSearchText] = useState('');
 
     const fetchProducts = async () => {
@@ -64,7 +62,8 @@ function ProductsPage() {
     const handleUpdateProduct = async () => {
         try {
             const values = await editForm.validateFields();
-            const productIdentifier = editingProduct.Products || editingProduct.Lungi_Name;
+            // Target the unique string record under the new "item" key column
+            const productIdentifier = editingProduct.item;
             
             const res = await fetch(`http://localhost:5001/api/products/${encodeURIComponent(productIdentifier)}`, {
                 method: 'PUT',
@@ -82,9 +81,9 @@ function ProductsPage() {
         }
     };
 
-    const deleteProduct = async (productKey) => {
+    const deleteProduct = async (itemKey) => {
         try {
-            const res = await fetch(`http://localhost:5001/api/products/${encodeURIComponent(productKey)}`, { 
+            const res = await fetch(`http://localhost:5001/api/products/${encodeURIComponent(itemKey)}`, { 
                 method: 'DELETE' 
             });
             const data = await res.json();
@@ -97,20 +96,22 @@ function ProductsPage() {
         }
     };
 
-    // 🚀 NEW: Filter items in real-time by Lungi Name or Product Name
-    const filteredProducts = products.filter(item => {
-        const lungi = String(item?.Lungi_Name || '').toLowerCase();
-        const product = String(item?.Products || '').toLowerCase();
+    // Filter array using updated lowercase spreadsheet labels
+    const filteredProducts = products.filter(row => {
+        const itemVal = String(row?.item || '').toLowerCase();
+        const labelVal = String(row?.lable || '').toLowerCase();
+        const typeVal = String(row?.type || '').toLowerCase();
         const search = searchText.toLowerCase().trim();
-        return lungi.includes(search) || product.includes(search);
+        return itemVal.includes(search) || labelVal.includes(search) || typeVal.includes(search);
     });
 
+    // Modified Ant-Design table maps directly to: item, lable, size, type
     const columns = [
-        { title: 'Lungi Name', dataIndex: 'Lungi_Name', key: 'Lungi_Name', render: (text) => <strong>{text || '—'}</strong> },
-        { title: 'Product Name', dataIndex: 'Products', key: 'Products', render: (text, record) => text || record.Lungi_Name || '—' },
-        { title: 'HSN Code', dataIndex: 'HSN_Code', key: 'HSN_Code' },
-        { title: 'Size Standard', dataIndex: 'Size', key: 'Size' },
-        { title: 'Base Rate', dataIndex: 'Rate', key: 'Rate', render: r => `₹${Number(r).toFixed(2)}` },
+        { title: 'Item', dataIndex: 'item', key: 'item', render: (text) => <strong>{text || '—'}</strong> },
+        { title: 'Label', dataIndex: 'lable', key: 'lable', render: (text) => text || '—' },
+        { title: 'HSN Code', dataIndex: 'HSN_Code', key: 'HSN_Code', render: (text) => text || '—' },
+        { title: 'Size Standard', dataIndex: 'size', key: 'size', render: (text) => text || '—' },
+        { title: 'Type', dataIndex: 'type', key: 'type', render: (text) => text || '—' },
         { 
             title: 'Actions', 
             key: 'actions', 
@@ -119,8 +120,8 @@ function ProductsPage() {
                 <Space size="middle">
                     <Button type="text" icon={<EditOutlined style={{ color: '#1890ff' }} />} onClick={() => handleEditClick(record)} />
                     <Popconfirm 
-                        title="Delete product blueprint?" 
-                        onConfirm={() => deleteProduct(record.Products || record.Lungi_Name)} 
+                        title="Delete product record?" 
+                        onConfirm={() => deleteProduct(record.item)} 
                         okText="Yes" 
                         cancelText="No"
                     >
@@ -160,12 +161,11 @@ function ProductsPage() {
             </Sider>
 
             <Layout>
-                {/* 🚀 INSERTED SEARCH BOX IN THE PRODUCT HEADER ROW */}
                 <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
-                    <span style={{ fontSize: '18px', fontWeight: 'bold' }}>Products</span>
+                    <span style={{ fontSize: '18px', fontWeight: 'bold' }}>Products Workspace</span>
                     <Space size="middle">
                         <Input 
-                            placeholder="Search Product or Lungi..." 
+                            placeholder="Search item or brand..." 
                             allowClear 
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
@@ -179,31 +179,30 @@ function ProductsPage() {
 
                 <Content style={{ padding: '24px', background: '#f8fafc', overflowY: 'auto' }}>
                     <Card variant="borderless">
-                        {/* 🚀 DATA SOURCE POINTS TO FILTERED ARRAY */}
-                        <Table dataSource={filteredProducts} columns={columns} rowKey="Products" loading={loading} size="small" pagination={{ pageSize: 10 }} />
+                        <Table dataSource={filteredProducts} columns={columns} rowKey="item" loading={loading} size="small" pagination={{ pageSize: 10 }} />
                     </Card>
                 </Content>
             </Layout>
 
             {/* Register New Product Modal */}
-            <Modal title="Register New Product" open={isAddModalVisible} onOk={handleAddProduct} onCancel={() => setIsAddModalVisible(false)} destroyOnHidden>
+            <Modal title="Register New Product" open={isAddModalVisible} onOk={handleAddProduct} onCancel={() => setIsAddModalVisible(false)} destroyOnClose>
                 <Form form={addForm} layout="vertical">
-                    <Form.Item name="Lungi_Name" label="Lungi Name" rules={[{ required: true }]}><Input /></Form.Item>
-                    <Form.Item name="Products" label="Product Name" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="item" label="Item Description / Name" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="lable" label="Label (e.g. Lungi Brand Name)" rules={[{ required: true }]}><Input /></Form.Item>
                     <Form.Item name="HSN_Code" label="HSN Code" rules={[{ required: true }]}><Input /></Form.Item>
-                    <Form.Item name="Size" label="Default Size"><Input /></Form.Item>
-                    <Form.Item name="Rate" label="Base Rate" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} min={0} /></Form.Item>
+                    <Form.Item name="size" label="Size Layout" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="type" label="Type" rules={[{ required: true }]}><Input /></Form.Item>
                 </Form>
             </Modal>
 
             {/* Edit Product Modal */}
-            <Modal title="Modify Product Record" open={isEditModalVisible} onOk={handleUpdateProduct} onCancel={() => setIsEditModalVisible(false)} destroyOnHidden>
+            <Modal title="Modify Product Record" open={isEditModalVisible} onOk={handleUpdateProduct} onCancel={() => setIsEditModalVisible(false)} destroyOnClose>
                 <Form form={editForm} layout="vertical">
-                    <Form.Item name="Lungi_Name" label="Lungi Name" rules={[{ required: true }]}><Input /></Form.Item>
-                    <Form.Item name="Products" label="Product Name" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="item" label="Item Description / Name" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="lable" label="Label / Brand Name" rules={[{ required: true }]}><Input /></Form.Item>
                     <Form.Item name="HSN_Code" label="HSN Code" rules={[{ required: true }]}><Input /></Form.Item>
-                    <Form.Item name="Size" label="Size Standard"><Input /></Form.Item>
-                    <Form.Item name="Rate" label="Base Unit Rate" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} min={0} /></Form.Item>
+                    <Form.Item name="size" label="Size Layout" rules={[{ required: true }]}><Input /></Form.Item>
+                    <Form.Item name="type" label="Type" rules={[{ required: true }]}><Input /></Form.Item>
                 </Form>
             </Modal>
         </Layout>
