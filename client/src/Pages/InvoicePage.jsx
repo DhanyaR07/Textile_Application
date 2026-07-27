@@ -474,14 +474,14 @@ function InvoicePage() {
                                                 <InputNumber className="no-print" min={0} variant="borderless" style={{ width: '100%', padding: 0 }} value={item.rate} placeholder="—" onChange={(val) => handleRowChange(index, 'rate', val)} />
                                             </td>
                                             <td style={{ textAlign: 'right', background: '#f9f9f9', fontWeight: 'bold' }}>
-                                                {item.product_name ? `₹${(item.amount || 0).toFixed(2)}` : ''}
+                                                {item.product_name ? `${(item.amount || 0).toFixed(2)}` : ''}
                                             </td>
                                             <td style={{ textAlign: 'right' }}>
                                                 <span className="print-only-text-node">{item.discount !== null ? `₹${Number(item.discount).toFixed(2)}` : ''}</span>
                                                 <InputNumber className="no-print" min={0} variant="borderless" style={{ width: '100%', padding: 0 }} value={item.discount} placeholder="—" onChange={(val) => handleRowChange(index, 'discount', val)} />
                                             </td>
                                             <td style={{ textAlign: 'right', background: '#f9f9f9', fontWeight: 'bold' }}>
-                                                {item.product_name ? `₹${(item.taxable || 0).toFixed(2)}` : ''}
+                                                {item.product_name ? `${(item.taxable || 0).toFixed(2)}` : ''}
                                             </td>
                                             <td style={{ textAlign: 'center' }} className="no-print">
                                                 <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => handleRowChange(index, 'product_name', '')} />
@@ -491,7 +491,7 @@ function InvoicePage() {
 
                                     <tr style={{ fontWeight: 'bold', background: '#fafafa' }}>
                                         <td style={{ textAlign: 'center' }}></td>
-                                        <td style={{ padding: '6px 8px' }}>Amount in Words:</td>
+                                        <td style={{ padding: '6px 8px' }}></td>
                                         <td style={{ textAlign: 'center', background: '#f5f5f5' }}>Total</td>
                                         <td style={{ textAlign: 'center' }}>
                                             {items.reduce((sum, item) => sum + Number(item.qty || 0), 0) || '0'}
@@ -501,7 +501,7 @@ function InvoicePage() {
                                         <td></td>
                                         <td></td>
                                         <td style={{ textAlign: 'right', background: '#f5f5f5', fontWeight: 'bold' }}>
-                                            ₹{totals.taxableSum.toFixed(2)}
+                                            {totals.taxableSum.toFixed(2)}
                                         </td>
                                         <td className="no-print"></td>
                                     </tr>
@@ -520,10 +520,10 @@ function InvoicePage() {
                                     </tr>
                                     <tr>
                                         <td colSpan="3" style={{ padding: '10px 12px', fontWeight: 'bold', fontSize: '12px', textTransform: 'uppercase', verticalAlign: 'middle', whiteSpace: 'normal', wordBreak: 'break-word', color: '#000000' }}>
-                                            RUPEES {convertNumberToWords(totals.netTotal)}
+                                            {convertNumberToWords(totals.netTotal)}
                                         </td>
                                         <td colSpan="2" className="tax-totals-heading-cell">Total Taxable Value</td>
-                                        <td className="tax-totals-value-cell">₹{totals.taxableSum.toFixed(2)}</td>
+                                        <td className="tax-totals-value-cell">{totals.taxableSum.toFixed(2)}</td>
                                     </tr>
                                     <tr>
                                         <td className="bank-header-cell" style={{ width: '20%' }}>Bank</td>
@@ -531,7 +531,7 @@ function InvoicePage() {
                                         <td className="bank-header-cell" style={{ width: '12%' }}>IFSC</td>
                                         <td className="tax-totals-heading-cell">Total CGST</td>
                                         <td className="tax-rate-percentage-cell">2.50%</td>
-                                        <td className="tax-totals-value-cell">₹{totals.cgst.toFixed(2)}</td>
+                                        <td className="tax-totals-value-cell">{totals.cgst.toFixed(2)}</td>
                                     </tr>
                                     <tr>
                                         <td className="bank-data-cell">{bankData.bank1_name}</td>
@@ -539,7 +539,7 @@ function InvoicePage() {
                                         <td className="bank-data-cell">{bankData.bank1_ifsc}</td>
                                         <td className="tax-totals-heading-cell">Total SGST</td>
                                         <td className="tax-rate-percentage-cell">2.50%</td>
-                                        <td className="tax-totals-value-cell">₹{totals.sgst.toFixed(2)}</td>
+                                        <td className="tax-totals-value-cell">{totals.sgst.toFixed(2)}</td>
                                     </tr>
                                     <tr>
                                         <td className="bank-data-cell">{bankData2.bank2_name}</td>
@@ -547,13 +547,13 @@ function InvoicePage() {
                                         <td className="bank-data-cell">{bankData2.bank2_ifsc}</td>
                                         <td className="tax-totals-heading-cell">Total IGST</td>
                                         <td className="tax-rate-percentage-cell">5.00%</td>
-                                        <td className="tax-totals-value-cell">₹{totals.igst.toFixed(2)}</td>
+                                        <td className="tax-totals-value-cell">{totals.igst.toFixed(2)}</td>
                                     </tr>
                                     <tr>
                                         <td colSpan="3" style={{ background: '#ffffff', borderBottom: 'none' }}></td>
                                         <td colSpan="2" className="tax-totals-heading-cell">Round Off</td>
                                         <td className="tax-totals-value-cell">
-                                            ₹{(totals.netTotal - (totals.taxableSum + totals.cgst + totals.sgst + totals.igst)).toFixed(2)}
+                                            {(totals.netTotal - (totals.taxableSum + totals.cgst + totals.sgst + totals.igst)).toFixed(2)}
                                         </td>
                                     </tr>
                                     <tr>
@@ -564,7 +564,7 @@ function InvoicePage() {
                                             3) Interest at 15% will be charged after 30 days
                                         </td>
                                         <td colSpan="2" className="net-total-heading-cell">Net Total</td>
-                                        <td className="net-total-value-cell">₹{totals.netTotal.toFixed(2)}</td>
+                                        <td className="net-total-value-cell">{totals.netTotal.toFixed(2)}</td>
                                     </tr>
                                     <tr>
                                         <td colSpan="3" className="auth-signature-block-cell">

@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Table, Tag, Typography, Button, Modal, Space, Popconfirm, Form, Input, InputNumber, message } from 'antd';
+import { Layout, Menu, Table, Typography, Button, Modal, Space, Popconfirm, Form, Input, InputNumber, message } from 'antd';
 import { DashboardOutlined, FileTextOutlined, ShoppingCartOutlined, UserOutlined, LogoutOutlined, PlusOutlined, BarChartOutlined, EyeOutlined, EditOutlined, DeleteOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
-// Helper function to convert numeric grand totals into text currency words safely
 const convertNumberToWords = (num) => {
     if (!num) return 'Zero Only';
     let safeNum = Math.round(Number(num));
@@ -54,7 +53,7 @@ function InvoiceReportPage() {
             if (invData.success) setSavedInvoices(invData.data || []);
             if (orderData.success) setAllRawOrders(orderData.data || []);
         } catch (err) {
-            message.error("Failed to load data.");
+            message.error("Failed to load invoice history records.");
         } finally {
             setLoading(false);
         }
@@ -67,28 +66,55 @@ function InvoiceReportPage() {
             const res = await fetch(`http://localhost:5001/api/invoices/${encodeURIComponent(invoiceNo)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
-                message.success("Invoice statement deleted.");
+                message.success("Invoice statement deleted successfully.");
                 loadData();
             }
         } catch (err) {
-            message.error("Failed to delete record.");
+            message.error("Failed to delete invoice record.");
         }
     };
 
     const viewEntireBill = (invoiceRecord) => {
         const recordInvoiceNo = String(invoiceRecord?.Invoice_No || invoiceRecord?.invoice_no || '').trim();
+        
         const matchedOrder = allRawOrders.find(o => {
             const orderInvoiceNo = String(o?.Invoice_No || o?.invoice_no || '').trim();
             return orderInvoiceNo === recordInvoiceNo;
         });
 
-        setSelectedBill(invoiceRecord);
+        const getVal = (...keys) => {
+            for (let val of keys) {
+                if (val !== undefined && val !== null && String(val).trim() !== '' && String(val).trim() !== '—' && String(val).trim() !== 'null' && String(val).trim() !== 'undefined') {
+                    return String(val).trim();
+                }
+            }
+            return '—';
+        };
+
+        const mergedDetails = {
+            Invoice_No: recordInvoiceNo,
+            Invoice_Date: getVal(invoiceRecord?.Invoice_Date, invoiceRecord?.invoice_date, matchedOrder?.Date, matchedOrder?.date),
+            Company_Name: getVal(invoiceRecord?.Company_Name, invoiceRecord?.company_name, matchedOrder?.Company_Name, matchedOrder?.company_name),
+            Customer_Name: getVal(invoiceRecord?.Customer_Name, invoiceRecord?.customer_name, matchedOrder?.Customer_name, matchedOrder?.customer_name),
+            Address: getVal(matchedOrder?.Address, matchedOrder?.address, invoiceRecord?.Address, invoiceRecord?.address),
+            
+            Bale_No: getVal(invoiceRecord?.Bale_No, invoiceRecord?.bale_no, matchedOrder?.Bale_No, matchedOrder?.bale_no, matchedOrder?.Bale_no),
+            LR_No: getVal(invoiceRecord?.LR_No, invoiceRecord?.lr_no, matchedOrder?.LR_No, matchedOrder?.lr_no, matchedOrder?.Lr_no),
+            Lorry_Name: getVal(invoiceRecord?.Lorry_Name, invoiceRecord?.lorry_name, matchedOrder?.Lorry_Name, matchedOrder?.lorry_name, matchedOrder?.through, matchedOrder?.Through),
+            
+            State: getVal(matchedOrder?.State, matchedOrder?.state, invoiceRecord?.State, 'TAMIL NADU'),
+            Total_Taxable: Number(invoiceRecord?.Total_Taxable || invoiceRecord?.total_taxable || 0),
+            Net_Total: Number(invoiceRecord?.Net_Total || invoiceRecord?.net_total || 0)
+        };
+
+        setSelectedBill(mergedDetails);
         setSelectedBillItems(matchedOrder ? (matchedOrder.Ordered_Products || matchedOrder.ordered_products || []) : []);
         setBillModalVisible(true);
     };
 
     const handleEditInvoiceClick = (record) => {
-        setEditingInvoiceNo(record.Invoice_No || record.invoice_no);
+        const invNo = record.Invoice_No || record.invoice_no;
+        setEditingInvoiceNo(invNo);
         invoiceForm.setFieldsValue({
             ...record,
             Customer_Name: record.Customer_Name || record.customer_name || '',
@@ -112,7 +138,7 @@ function InvoiceReportPage() {
             });
             const data = await res.json();
             if (data.success) {
-                message.success("Invoice updated successfully.");
+                message.success("Invoice summary parameters updated successfully.");
                 setIsEditInvoiceVisible(false);
                 loadData();
             }
@@ -121,58 +147,21 @@ function InvoiceReportPage() {
         }
     };
 
-    // 🚀 FIXED: Added fallback render checks to capture both CamelCase and lowercase database variants
     const invoiceColumns = [
         { 
-            title: 'Invoice No', 
+            title: 'Company Name ID', 
             dataIndex: 'Invoice_No', 
             key: 'Invoice_No', 
             render: (t, r) => <strong style={{ color: '#1890ff' }}>{t || r.invoice_no}</strong> 
         },
         { 
-            title: 'Customer Name', 
-            dataIndex: 'Customer_Name', 
-            key: 'Customer_Name', 
-            render: (t, r) => t || r.customer_name || '—' 
-        },
-        { 
             title: 'Company Name', 
             dataIndex: 'Company_Name', 
             key: 'Company_Name', 
-            render: (t, r) => t || r.company_name || '—' 
+            render: (t, r) => <strong>{t || r.company_name || r.Customer_Name || r.customer_name || '—'}</strong> 
         },
         { 
-            title: 'Invoice Date', 
-            dataIndex: 'Invoice_Date', 
-            key: 'Invoice_Date', 
-            render: (d, r) => {
-                const dateVal = d || r.invoice_date;
-                return dateVal ? new Date(dateVal).toLocaleDateString('en-IN') : '—';
-            }
-        },
-        { 
-            title: 'Bale No', 
-            dataIndex: 'Bale_No', 
-            key: 'Bale_No', 
-            render: (b, r) => { 
-                const bn = b || r.bale_no; 
-                return bn && bn !== '—' && bn !== '--' ? <Tag color="orange">{bn}</Tag> : '—'; 
-            } 
-        },
-        { 
-            title: 'Lorry Carrier', 
-            key: 'Lorry_Name', 
-            render: (_, record) => <span style={{ fontWeight: '500' }}>{record.Lorry_Name || record.lorry_name || '—'}</span> 
-        },
-        { 
-            title: 'Net Total', 
-            dataIndex: 'Net_Total', 
-            key: 'Net_Total', 
-            align: 'right', 
-            render: (v, r) => <strong>₹{Number(v || r.net_total || 0).toFixed(2)}</strong> 
-        },
-        { 
-            title: 'Actions Workflow', 
+            title: 'Actions', 
             key: 'action', 
             align: 'center', 
             width: 220, 
@@ -187,6 +176,21 @@ function InvoiceReportPage() {
             )
         }
     ];
+
+    const computedTaxableSum = selectedBillItems.reduce((acc, item) => {
+        const qty = Number(item.QTY || item.qty || 0);
+        const rate = Number(item.Rate || item.rate || 0);
+        const disc = Number(item.Discount || item.discount || 0);
+        return acc + Math.max(0, (qty * rate) - disc);
+    }, 0);
+
+    const activeTaxable = Number(selectedBill?.Total_Taxable || computedTaxableSum);
+    const activeNetTotal = Number(selectedBill?.Net_Total || Math.round(activeTaxable * 1.05));
+    const isLocalState = String(selectedBill?.State || 'TAMIL NADU').toUpperCase() === 'TAMIL NADU';
+    
+    const cgstVal = isLocalState ? activeTaxable * 0.025 : 0;
+    const sgstVal = isLocalState ? activeTaxable * 0.025 : 0;
+    const igstVal = !isLocalState ? activeTaxable * 0.05 : 0;
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
@@ -219,17 +223,17 @@ function InvoiceReportPage() {
                 </Header>
 
                 <Content style={{ padding: '24px', background: '#fff' }}>
-                    <Table dataSource={savedInvoices} columns={invoiceColumns} rowKey={(record) => record.Invoice_No || record.invoice_no || record.id || Math.random()} size="small" loading={loading} bordered={false} pagination={{ pageSize: 10 }} />
+                    <Table dataSource={savedInvoices} columns={invoiceColumns} rowKey={(record) => record.Invoice_No || record.invoice_no || Math.random()} size="small" loading={loading} bordered={false} pagination={{ pageSize: 10 }} />
                 </Content>
             </Layout>
 
-            <Modal title="Modify Invoice summary parameters" open={isEditInvoiceVisible} onOk={handleUpdateInvoiceSummary} onCancel={() => setIsEditInvoiceVisible(false)} destroyOnHidden>
+            <Modal title="Modify Invoice Summary Parameters" open={isEditInvoiceVisible} onOk={handleUpdateInvoiceSummary} onCancel={() => setIsEditInvoiceVisible(false)} destroyOnHidden>
                 <Form form={invoiceForm} layout="vertical">
                     <Form.Item name="Customer_Name" label="Client Name" rules={[{ required: true }]}><Input /></Form.Item>
                     <Form.Item name="Company_Name" label="Company Brand Name"><Input /></Form.Item>
-                    <Form.Item name="Bale_No" label="Bale Number"><Input /></Form.Item>
-                    <Form.Item name="LR_No" label="LR Freight Number"><Input /></Form.Item>
-                    <Form.Item name="Lorry_Name" label="Lorry Carrier Name"><Input /></Form.Item>
+                    <Form.Item name="Bale_No" label="Bale Number"><Input placeholder="e.g. 10/B" /></Form.Item>
+                    <Form.Item name="LR_No" label="LR Freight Number"><Input placeholder="e.g. LR-4021" /></Form.Item>
+                    <Form.Item name="Lorry_Name" label="Lorry Carrier Name"><Input placeholder="e.g. VRL Logistics" /></Form.Item>
                     <Form.Item name="Total_Taxable" label="Taxable Value" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} /></Form.Item>
                     <Form.Item name="Net_Total" label="Net Value Total" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} /></Form.Item>
                 </Form>
@@ -241,7 +245,7 @@ function InvoiceReportPage() {
                         <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '8px', marginBottom: '12px' }}>
                             <Title level={3} style={{ margin: 0, fontWeight: 'bold', color: '#000', fontFamily: 'serif' }}>SRI BANUKRISHNA TEXTILES</Title>
                             <Text style={{ fontSize: '13px', display: 'block', color: '#000' }}>408/A, Anaikattu Road, Rajiv Nagar, Surampatti Valasu, Erode - 638009</Text>
-                            <Text style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#000' }}>Prop: S.R. Krishnan &nbsp;|&nbsp; Mobile: 9443840784&nbsp;|&nbsp; GSTIN: 33AIUPK8316R3ZB</Text>
+                            <Text style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#000' }}>Prop: S.R. Krishnan &nbsp;|&nbsp; Mobile: 9443840784 / 9486153380 &nbsp;|&nbsp; GSTIN: 33AIUPK8316R3ZB</Text>
                         </div>
 
                         <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '12px', marginBottom: '12px' }}>
@@ -252,14 +256,15 @@ function InvoiceReportPage() {
                                 </tr>
                                 <tr>
                                     <td style={{ padding: '8px', borderRight: '1px solid #000', verticalAlign: 'top', lineHeight: '1.6', color: '#000' }}>
-                                        <strong>Receiver Name:</strong> {selectedBill.Customer_Name || selectedBill.customer_name || '—'}<br />
-                                        <strong>Address:</strong> {selectedBill.Company_Name || selectedBill.company_name || selectedBill.Address || selectedBill.address || '—'}
+                                        <strong>Company Name:</strong> {selectedBill.Company_Name}<br />
+                                        <strong>Receiver Name:</strong> {selectedBill.Customer_Name}<br />
+                                        <strong>Address:</strong> {selectedBill.Address}
                                     </td>
                                     <td style={{ padding: '8px', verticalAlign: 'top', lineHeight: '1.6', color: '#000' }}>
-                                        <strong>Invoice No:</strong> <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{selectedBill.Invoice_No || selectedBill.invoice_no || '—'}</span><br />
-                                        <strong>Date:</strong> {selectedBill.Invoice_Date || selectedBill.invoice_date ? new Date(selectedBill.Invoice_Date || selectedBill.invoice_date).toLocaleDateString('en-IN') : '—'}<br />
-                                        <strong>BALE No:</strong> {selectedBill.Bale_No || selectedBill.bale_no || '—'} &nbsp;|&nbsp; <strong>LR No:</strong> {selectedBill.LR_No || selectedBill.lr_no || '—'}<br />
-                                        <strong>Lorry:</strong> {selectedBill.Lorry_Name || selectedBill.lorry_name || '—'}
+                                        <strong>Invoice No:</strong> <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{selectedBill.Invoice_No}</span><br />
+                                        <strong>Date:</strong> {selectedBill.Invoice_Date ? new Date(selectedBill.Invoice_Date).toLocaleDateString('en-IN') : '—'}<br />
+                                        <strong>BALE No:</strong> {selectedBill.Bale_No} &nbsp;|&nbsp; <strong>LR No:</strong> {selectedBill.LR_No}<br />
+                                        <strong>Lorry Carrier:</strong> {selectedBill.Lorry_Name}
                                     </td>
                                 </tr>
                             </tbody>
@@ -269,61 +274,84 @@ function InvoiceReportPage() {
                             <thead>
                                 <tr style={{ background: '#f5f5f5', borderBottom: '1px solid #000' }}>
                                     <th style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', width: '5%', color: '#000' }}>No</th>
-                                    <th style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'left', width: '45%', color: '#000' }}>Product Details</th>
-                                    <th style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', width: '15%', color: '#000' }}>HSN Code</th>
-                                    <th style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', width: '10%', color: '#000' }}>QTY</th>
+                                    <th style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'left', width: '35%', color: '#000' }}>Product Details</th>
+                                    <th style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', width: '12%', color: '#000' }}>HSN Code</th>
+                                    <th style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', width: '8%', color: '#000' }}>QTY</th>
                                     <th style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', width: '10%', color: '#000' }}>Size</th>
-                                    <th style={{ padding: '6px', textAlign: 'right', width: '15%', color: '#000' }}>Rate</th>
+                                    <th style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'right', width: '12%', color: '#000' }}>Rate</th>
+                                    <th style={{ padding: '6px', textAlign: 'right', width: '18%', color: '#000' }}>Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {selectedBillItems && selectedBillItems.length > 0 ? (
-                                    selectedBillItems.map((item, idx) => (
-                                        <tr key={idx} style={{ borderBottom: '1px dashed #ddd' }}>
-                                            <td style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', color: '#000' }}>{idx + 1}</td>
-                                            <td style={{ borderRight: '1px solid #000', padding: '6px', color: '#000' }}><strong>{item.Product_Name || item.product_name}</strong></td>
-                                            <td style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', color: '#000' }}>{item.HSN_Code || item.hsn_code || '—'}</td>
-                                            <td style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', color: '#000' }}>{item.QTY || item.qty}</td>
-                                            <td style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', color: '#000' }}>{item.Size || item.size || '—'}</td>
-                                            <td style={{ padding: '6px', textAlign: 'right', color: '#000' }}>₹{Number(item.Rate || item.rate || 0).toFixed(2)}</td>
-                                        </tr>
-                                    ))
+                                    selectedBillItems.map((item, idx) => {
+                                        const qty = Number(item.QTY || item.qty || 1);
+                                        const rate = Number(item.Rate || item.rate || 0);
+                                        const amt = qty * rate;
+                                        return (
+                                            <tr key={idx} style={{ borderBottom: '1px dashed #ddd' }}>
+                                                <td style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', color: '#000' }}>{idx + 1}</td>
+                                                <td style={{ borderRight: '1px solid #000', padding: '6px', color: '#000' }}><strong>{item.Product_Name || item.product_name}</strong></td>
+                                                <td style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', color: '#000' }}>{item.HSN_Code || item.hsn_code || '—'}</td>
+                                                <td style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', color: '#000' }}>{qty}</td>
+                                                <td style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'center', color: '#000' }}>{item.Size || item.size || '—'}</td>
+                                                <td style={{ borderRight: '1px solid #000', padding: '6px', textAlign: 'right', color: '#000' }}>₹{rate.toFixed(2)}</td>
+                                                <td style={{ padding: '6px', textAlign: 'right', color: '#000', fontWeight: 'bold' }}>₹{amt.toFixed(2)}</td>
+                                            </tr>
+                                        );
+                                    })
                                 ) : (
                                     <tr>
-                                        <td colSpan={6} style={{ padding: '12px', textAlign: 'center', color: '#999', fontStyle: 'italic' }}>
-                                            No matching item definitions discovered inside completion logs.
+                                        <td colSpan={7} style={{ padding: '12px', textAlign: 'center', color: '#999', fontStyle: 'italic' }}>
+                                            Full item details synchronized from order completion ledger.
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.1fr', gap: '15px', border: '1px solid #000', fontSize: '12px', padding: '8px', marginBottom: '15px' }}>
-                            <div>
-                                <div style={{ marginBottom: '8px', color: '#000' }}>
-                                    <strong>Amount Chargeable (in words):</strong><br />
-                                    <span style={{ textTransform: 'uppercase', fontStyle: 'italic', fontSize: '11px', fontWeight: 'bold' }}>
-                                        Rupees {convertNumberToWords(selectedBill.Net_Total || selectedBill.net_total)}
-                                    </span>
-                                </div>
-                                <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', borderTop: '1px solid #000', paddingTop: '4px' }}>
-                                    <tbody>
-                                        <tr style={{ color: '#000' }}><td><strong>CUB Account:</strong> 059109000018565</td><td><strong>IFSC:</strong> CIUB0000306</td></tr>
-                                        <tr style={{ color: '#000' }}><td><strong>PNB Account:</strong> 0165002100045817</td><td><strong>IFSC:</strong> PUNB0016500</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div style={{ borderLeft: '1px solid #000', paddingLeft: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px', color: '#000' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>Total Taxable Value:</span>
-                                    <span>₹{Number(selectedBill.Total_Taxable || selectedBill.total_taxable || 0).toFixed(2)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold', paddingTop: '4px', borderTop: '1px solid #ddd' }}>
-                                    <span>Net Grand Total:</span>
-                                    <span style={{ color: '#52c41a' }}>₹{Number(selectedBill.Net_Total || selectedBill.net_total || 0).toFixed(2)}</span>
-                                </div>
-                            </div>
-                        </div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '11px', marginBottom: '15px' }}>
+                            <tbody>
+                                <tr>
+                                    <td colSpan="6" style={{ padding: '6px 8px', fontWeight: 'bold', borderBottom: '1px solid #000', color: '#000' }}>
+                                        Amount Chargeable (in words): <span style={{ textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 'normal' }}>{convertNumberToWords(activeNetTotal)}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style={{ width: '20%', padding: '4px 8px', borderRight: '1px solid #000', fontWeight: 'bold' }}>Bank</td>
+                                    <td style={{ width: '20%', padding: '4px 8px', borderRight: '1px solid #000', fontWeight: 'bold' }}>Account No</td>
+                                    <td style={{ width: '15%', padding: '4px 8px', borderRight: '1px solid #000', fontWeight: 'bold' }}>IFSC</td>
+                                    <td style={{ width: '25%', padding: '4px 8px', borderRight: '1px solid #000', fontWeight: 'bold' }}>Taxable Value</td>
+                                    <td style={{ width: '20%', padding: '4px 8px', textAlign: 'right', fontWeight: 'bold' }}>₹{activeTaxable.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                    <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>CITY UNION BANK</td>
+                                    <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>059109000018565</td>
+                                    <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>CIUB0000306</td>
+                                    <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>Total CGST (2.50%)</td>
+                                    <td style={{ padding: '4px 8px', textAlign: 'right' }}>₹{cgstVal.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                    <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>PUNJAB NATIONAL BANK</td>
+                                    <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>0165002100045817</td>
+                                    <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>PUNB0016500</td>
+                                    <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>Total SGST (2.50%)</td>
+                                    <td style={{ padding: '4px 8px', textAlign: 'right' }}>₹{sgstVal.toFixed(2)}</td>
+                                </tr>
+                                <tr style={{ borderBottom: '1px solid #000' }}>
+                                    <td colSpan="3" style={{ borderRight: '1px solid #000' }}></td>
+                                    <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>Total IGST (5.00%)</td>
+                                    <td style={{ padding: '4px 8px', textAlign: 'right' }}>₹{igstVal.toFixed(2)}</td>
+                                </tr>
+                                <tr style={{ fontSize: '13px', fontWeight: 'bold', background: '#fafafa' }}>
+                                    <td colSpan="3" style={{ borderRight: '1px solid #000', padding: '6px 8px' }}>
+                                        Declaration: Goods once sold cannot be taken back.
+                                    </td>
+                                    <td style={{ padding: '6px 8px', borderRight: '1px solid #000' }}>Net Grand Total</td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#52c41a' }}>₹{activeNetTotal.toFixed(2)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
                         <div style={{ textAlign: 'right', marginTop: '15px' }} className="no-print">
                             <Space>

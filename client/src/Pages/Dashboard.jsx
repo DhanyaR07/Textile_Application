@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Card, Row, Col, Statistic, Table, Typography } from 'antd';
-import { DashboardOutlined, FileTextOutlined, ShoppingCartOutlined, UserOutlined, LogoutOutlined, ArrowUpOutlined, PlusOutlined, BarChartOutlined } from '@ant-design/icons';
+import { Layout, Menu, Card, Row, Col, Statistic, Typography, Button, Space } from 'antd';
+import { 
+    DashboardOutlined, FileTextOutlined, ShoppingCartOutlined, 
+    UserOutlined, LogoutOutlined, PlusOutlined, BarChartOutlined, 
+    InboxOutlined 
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 const { Header, Sider, Content } = Layout;
@@ -12,21 +16,27 @@ function DashboardPage() {
     // State Engine Variables
     const [products, setProducts] = useState([]);
     const [customers, setCustomers] = useState([]);
+    const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Fetch Data Stream Routine Loop
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [prodRes, custRes] = await Promise.all([
+            const [prodRes, custRes, orderRes] = await Promise.all([
                 fetch('http://localhost:5001/api/products'),
                 fetch('http://localhost:5001/api/customers'),
+                fetch('http://localhost:5001/api/orders-manifest')
             ]);
+
             const prodData = await prodRes.json();
             const custData = await custRes.json();
+            const orderData = await orderRes.json();
 
             if (prodData && prodData.success) setProducts(prodData.data || []);
             if (custData && custData.success) setCustomers(custData.data || []);
+            if (orderData && orderData.success) setOrders(orderData.data || []);
+
         } catch (error) {
             console.error('Error connecting to API gateway loop:', error);
         } finally {
@@ -36,19 +46,14 @@ function DashboardPage() {
 
     useEffect(() => { fetchData(); }, []);
 
-    // Calculation Logic Matrix
-    const totalGrossSales = products.reduce((sum, item) => sum + Number(item.Amount || 0), 0);
-    const uniqueFabricTypesCount = products.length;
-
-    const quickColumns = [
-        { title: 'Particulars', dataIndex: 'Products', key: 'Products' },
-        { title: 'HSN/SAC', dataIndex: 'HSN_Code', key: 'HSN_Code' },
-        { title: 'Size', dataIndex: 'Size', key: 'Size', align: 'right' },
-        { title: 'Rate', dataIndex: 'Rate', key: 'Rate', align: 'right', render: v => `₹${Number(v).toFixed(2)}` },
-    ];
+    // Calculated Business KPIs
+    const totalCustomersCount = customers.length;
+    const totalProductsCount = products.length;
+    const totalOrdersCount = orders.length;
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
+            {/* SIDEBAR NAVIGATION */}
             <Sider width={240}>
                 <div className="sidebar-logo-container"><span className="sidebar-logo-text">Textiles</span></div>
                 <Menu
@@ -65,8 +70,8 @@ function DashboardPage() {
                             icon: <BarChartOutlined />, 
                             label: 'Reports Workspace',
                             children: [
-                                { key: '/reports?tab=1', label: 'Saved Invoices Portal' },
-                                { key: '/reports?tab=2', label: 'Saved Orders Portal' }
+                                { key: '/reports/invoices', label: 'Saved Invoices Portal' },
+                                { key: '/reports/orders', label: 'Saved Orders Portal' }
                             ]
                         },
                         { key: '/login', icon: <LogoutOutlined />, label: 'Logout' }
@@ -76,53 +81,54 @@ function DashboardPage() {
             </Sider>
 
             <Layout>
-                <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center' }}>
-                    <Title level={4} style={{ margin: 0 }}>Business Analytics</Title>
+                {/* HEADER SECTION */}
+                <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
+                    <Title level={4} style={{ margin: 0 }}>Business Analytics Overview</Title>
+                    <Space size="middle">
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/orders')}>
+                            New Order
+                        </Button>
+                        <Button style={{ background: '#000', color: '#fff', borderColor: '#000' }} icon={<FileTextOutlined />} onClick={() => navigate('/invoices')}>
+                            Create Invoice
+                        </Button>
+                    </Space>
                 </Header>
 
                 <Content style={{ padding: '24px', background: '#f8fafc', overflowY: 'auto' }}>
                     
-                    {/* LIVE SCORECARDS ANALYTICS HEADER */}
-                    <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-                        <Col xs={24} sm={12} lg={6}>
-                            {/* 🚀 FIXED: Swapped bordered={false} with variant="borderless" */}
-                            <Card variant="borderless" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                {/* 🚀 FIXED: Swapped valueStyle with styles={{ content: ... }} */}
-                                <Statistic 
-                                    title="Gross Revenue Flow" 
-                                    value={totalGrossSales} 
-                                    precision={2} 
-                                    prefix="₹" 
-                                    styles={{ content: { color: '#3f8600', fontWeight: 'bold' } }} 
-                                    icon={<ArrowUpOutlined />} 
-                                />
-                            </Card>
-                        </Col>
-                        <Col xs={24} sm={12} lg={6}>
-                            {/* 🚀 FIXED: Swapped bordered={false} with variant="borderless" */}
-                            <Card variant="borderless" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderTop: '3px solid #1890ff' }}>
-                                {/* 🚀 FIXED: Swapped valueStyle with styles={{ content: ... }} */}
-                                <Statistic 
-                                    title="Active Fabric Items" 
-                                    value={uniqueFabricTypesCount} 
-                                    styles={{ content: { color: '#1890ff', fontWeight: 'bold' } }} 
-                                    suffix="Varieties" 
-                                />
-                            </Card>
-                        </Col>
-                    </Row>
-                    
-                    {/* PARTICULARS OVERVIEW GRID ROW */}
+                    {/* 📊 LIVE KPI ANALYTICS SCORECARDS */}
                     <Row gutter={[16, 16]}>
-                        <Col xs={24} lg={16}>
-                            {/* 🚀 FIXED: Swapped bordered={false} with variant="borderless" */}
-                            <Card variant="borderless" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }} loading={loading}>
-                                <Table 
-                                    dataSource={products} 
-                                    columns={quickColumns}
-                                    pagination={false} 
-                                    rowKey="Products" 
-                                    size="small"
+                        <Col xs={24} sm={12} lg={8}>
+                            <Card variant="borderless" loading={loading} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderTop: '3px solid #1890ff' }}>
+                                <Statistic 
+                                    title="Total Active Products" 
+                                    value={totalProductsCount} 
+                                    styles={{ content: { color: '#1890ff', fontWeight: 'bold' } }} 
+                                    suffix="Items" 
+                                    icon={<InboxOutlined />}
+                                />
+                            </Card>
+                        </Col>
+
+                        <Col xs={24} sm={12} lg={8}>
+                            <Card variant="borderless" loading={loading} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderTop: '3px solid #722ed1' }}>
+                                <Statistic 
+                                    title="Registered Clients" 
+                                    value={totalCustomersCount} 
+                                    styles={{ content: { color: '#722ed1', fontWeight: 'bold' } }} 
+                                    suffix="Clients" 
+                                    icon={<UserOutlined />}
+                                />
+                            </Card>
+                        </Col>
+
+                        <Col xs={24} sm={12} lg={8}>
+                            <Card variant="borderless" loading={loading} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderTop: '3px solid #fa8c16' }}>
+                                <Statistic 
+                                    title="Total Orders Booked" 
+                                    value={totalOrdersCount} 
+                                    styles={{ content: { color: '#fa8c16', fontWeight: 'bold' } }} 
+                                    suffix="Orders" 
                                 />
                             </Card>
                         </Col>

@@ -1,25 +1,18 @@
 import express from 'express';
 import cors from 'cors';
 import pool from './connection/db.js';
-import fs from 'fs';  // Import native File System module
-import path from 'path';  // Import path manager utilities
-import bcrypt from 'bcrypt'; // Added missing cryptographic module import!
+import bcrypt from 'bcrypt';
 
 const app = express();
 
-// Essential Middlewares — Must be loaded BEFORE defining any routes!
 app.use(cors());
 app.use(express.json());
 
 console.log("🚀 Initializing Textiles ERP Master Backend System Router...");
 
-// ==========================================================================
-// 🔐 SECURE ACCOUNT CREATION GATEWAY
-// ==========================================================================
+// 🔐 REGISTER ROUTE
 app.post('/api/register', async (req, res) => {
-    const username = req.body.username;
-    const password = req.body.password;
-    const role = req.body.role || 'staff'; 
+    const { username, password, role = 'staff' } = req.body;
     
     if (!username || !password) {
         return res.status(400).json({ success: false, message: 'Username and password configurations are mandatory.' });
@@ -41,19 +34,16 @@ app.post('/api/register', async (req, res) => {
         const sqlInsert = 'INSERT INTO users (username, password, role) VALUES (?, ?, ?)';
         await pool.query(sqlInsert, [String(username), encryptedHash, String(role)]);
 
-        return res.json({ success: true, message: 'Account successfully configured! Redirecting back to access portal...' });
+        return res.json({ success: true, message: 'Account successfully configured!' });
     } catch (error) {
-        console.error("❌ CRITICAL REGISTRATION DATABASE FAULT:", error.message);
+        console.error("❌ REGISTRATION FAULT:", error.message);
         return res.status(500).json({ success: false, message: `Internal Server Error: ${error.message}` });
     }
 });
 
-// ==========================================================================
-// 🔐 AUTHENTICATION ROUTE GATEWAY
-// ==========================================================================
+// 🔐 LOGIN ROUTE
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
-    console.log(`🔑 Database login query triggered for user: "${username}"`);
 
     try {
         const [rows] = await pool.query(
@@ -78,14 +68,11 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Invalid secure passkey credentials mismatch.' });
         }
     } catch (error) {
-        console.error("❌ Database Auth Error details:", error.message);
         return res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// ==========================================================================
-// 👕 UPDATED PRODUCTS PORTAL ROUTE (Remapped to properties: item, lable, size, type)
-// ==========================================================================
+// 👕 PRODUCTS ROUTES
 app.get('/api/products', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM product_details');
@@ -95,7 +82,6 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// 🚀 PRODUCTS: INSERT ACTION
 app.post('/api/products', async (req, res) => {
   const { item, lable, HSN_Code, size, type } = req.body;
   try {
@@ -107,7 +93,6 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-// 🚀 PRODUCTS: UPDATE EDIT ACTION
 app.put('/api/products/:id', async (req, res) => {
   const originalItemName = decodeURIComponent(req.params.id);
   const { item, lable, HSN_Code, size, type } = req.body;
@@ -117,15 +102,12 @@ app.put('/api/products/:id', async (req, res) => {
     const [result] = await pool.query(queryStr, [item, lable, HSN_Code, size, type, originalItemName]);
     res.json({ success: true, affectedRows: result.affectedRows });
   } catch (err) {
-    console.error("❌ MySQL Product Update Fault:", err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 🚀 PRODUCTS: DELETE ACTION
 app.delete('/api/products/:id', async (req, res) => {
   const targetItemName = decodeURIComponent(req.params.id);
-  
   try {
     const [result] = await pool.query('DELETE FROM product_details WHERE item = ?', [targetItemName]);
     if (result.affectedRows === 0) {
@@ -133,14 +115,11 @@ app.delete('/api/products/:id', async (req, res) => {
     }
     res.json({ success: true, message: 'Product profile successfully erased from catalog.' });
   } catch (err) {
-    console.error("❌ MySQL Product Deletion Fault:", err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ==========================================================================
-// 👥 CUSTOMERS PORTAL API ROUTE ledgers (table: bill_to)
-// ==========================================================================
+// 👥 CUSTOMERS ROUTES
 app.get('/api/customers', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM bill_to');
@@ -190,9 +169,7 @@ app.delete('/api/customers/:id', async (req, res) => {
   }
 });
 
-// ==========================================================================
-// 📈 GST DYNAMIC DATA LOOKUP ROUTES
-// ==========================================================================
+// 📈 GST RATES
 app.get('/api/gst-rates', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM gst');
@@ -202,9 +179,7 @@ app.get('/api/gst-rates', async (req, res) => {
   }
 });
 
-// ==========================================================================
-// 📋 TRANSACTIONAL LEDGER ORDER MANIFEST ROUTES (table: order_details)
-// ==========================================================================
+// 📋 ORDERS MANIFEST ROUTES
 app.post('/api/orders', async (req, res) => {
     const orderData = req.body;
     const stateCheck = String(orderData.State || '').trim().toUpperCase();
@@ -251,7 +226,6 @@ app.post('/api/orders', async (req, res) => {
         const [result] = await pool.query(insertQuery, values);
         res.json({ success: true, message: 'Order item recorded!', id: result.insertId });
     } catch (err) {
-        console.error("❌ Error on POST /api/orders:", err.message); 
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -306,7 +280,6 @@ app.get('/api/orders-manifest', async (req, res) => {
         const finalResults = Object.values(manifestMap);
         res.json({ success: true, data: finalResults });
     } catch (err) {
-        console.error("❌ Backend Mapping Error:", err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -335,17 +308,12 @@ app.delete('/api/orders/:invoiceNo', async (req, res) => {
     }
 });
 
-// ==========================================================================
-// 🚀 FIXED: SAVE INVOICE DRAFT ENTRY MATRIX (UNIVERSAL SCHEMA SAFEGUARD)
-// ==========================================================================
+// 🚀 INVOICES SAVE DRAFT ROUTE
 app.post('/api/invoices/save-draft', async (req, res) => {
-    const { invoice_no, receiver_name, bale_no, lr_no, date, taxableSum, netTotal, lorry_name, through } = req.body;
+    const { invoice_no, receiver_name, bale_no, lr_no, date, taxableSum, netTotal, lorry_name } = req.body;
     const company_name = req.body.company_name || req.body.Company_Name || '—';
     
-    console.log(`💾 Persisting Invoice draft entry inside DB for Ref No: ${invoice_no}`);
-
     try {
-        // Try executing using your master standard columns layout
         const invoiceSql = `
             INSERT INTO invoice_billing_ledger 
             (Invoice_No, Customer_Name, Company_Name, Total_Taxable, Net_Total, Bale_No, LR_No, Invoice_Date, Lorry_Name) 
@@ -359,47 +327,51 @@ app.post('/api/invoices/save-draft', async (req, res) => {
             receiver_name, company_name, Number(taxableSum || 0), Number(netTotal || 0), bale_no, lr_no, date, lorry_name
         ]);
 
-        // Safely try updating the tracking manifests order state flag status
         try {
             await pool.query("UPDATE order_details SET Order_Status = 'COMPLETED' WHERE Invoice_No = ?", [invoice_no]);
         } catch (orderErr) {
-            console.log("⚠️ Order table update status skipped:", orderErr.message);
+            console.log("⚠️ Order status skip:", orderErr.message);
         }
 
         return res.json({ success: true, message: 'Invoice records synced successfully!' });
 
     } catch (err) {
-        console.error("❌ CRITICAL INVOICE SAVE FAULT. Attempting auto-fallback update...", err.message);
-        
-        try {
-            // Fallback strategy: If your invoice table has lowercase column matching layouts from adjustments, try this:
-            const fallbackSql = `
-                INSERT INTO invoice_billing_ledger 
-                (Invoice_No, Customer_Name, Net_Total, Invoice_Date) 
-                VALUES (?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE Customer_Name = ?, Net_Total = ?, Invoice_Date = ?
-            `;
-            await pool.query(fallbackSql, [
-                invoice_no, receiver_name, Number(netTotal || 0), date,
-                receiver_name, Number(netTotal || 0), date
-            ]);
-            
-            return res.json({ success: true, message: 'Invoice records synced via structural fallback path!' });
-        } catch (fallbackErr) {
-            console.error("❌ Fallback query failed as well:", fallbackErr.message);
-            return res.status(500).json({ 
-                success: false, 
-                error: "Database configuration layout mismatch", 
-                details: err.message 
-            });
-        }
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
+// 📑 SAVED INVOICES HISTORY ROUTE
 app.get('/api/invoices-history', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM invoice_billing_ledger ORDER BY Invoice_Date DESC, id DESC');
+        const [rows] = await pool.query('SELECT * FROM invoice_billing_ledger ORDER BY id DESC');
         res.json({ success: true, data: rows });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 🔍 FETCH SINGLE INVOICE DETAILS FOR PRINT PREVIEW
+app.get('/api/invoices/details/:invoiceNo', async (req, res) => {
+    const invoiceNo = decodeURIComponent(req.params.invoiceNo);
+    try {
+        const [invRows] = await pool.query('SELECT * FROM invoice_billing_ledger WHERE Invoice_No = ?', [invoiceNo]);
+        const [orderRows] = await pool.query('SELECT * FROM order_details WHERE Invoice_No = ?', [invoiceNo]);
+
+        const invoice = invRows[0] || {};
+        
+        res.json({
+            success: true,
+            data: {
+                ...invoice,
+                Company_Name: invoice.Company_Name || invoice.company_name || orderRows[0]?.Company_Name || '—',
+                Customer_Name: invoice.Customer_Name || invoice.customer_name || orderRows[0]?.Customer_name || '—',
+                Address: orderRows[0]?.Address || invoice.Address || '—',
+                Bale_No: invoice.Bale_No || invoice.bale_no || orderRows[0]?.Bale_No || '—',
+                LR_No: invoice.LR_No || invoice.lr_no || orderRows[0]?.LR_No || '—',
+                Lorry_Name: invoice.Lorry_Name || invoice.lorry_name || orderRows[0]?.Lorry_Name || '—',
+                items: orderRows
+            }
+        });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
