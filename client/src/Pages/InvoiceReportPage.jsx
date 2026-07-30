@@ -227,6 +227,7 @@ function InvoiceReportPage() {
                 </Content>
             </Layout>
 
+            {/* 🚀 FIXED: Replaced destroyOnClose with destroyOnHidden */}
             <Modal title="Modify Invoice Summary Parameters" open={isEditInvoiceVisible} onOk={handleUpdateInvoiceSummary} onCancel={() => setIsEditInvoiceVisible(false)} destroyOnHidden>
                 <Form form={invoiceForm} layout="vertical">
                     <Form.Item name="Customer_Name" label="Client Name" rules={[{ required: true }]}><Input /></Form.Item>
