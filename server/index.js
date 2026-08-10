@@ -388,5 +388,5 @@ app.delete('/api/invoices/:invoiceNo', async (req, res) => {
     }
 });
 
-const PORT = 5001;
-app.listen(PORT, () => console.log(`🚀 Textiles Backend listening on http://localhost:${PORT}`));
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => console.log(`🚀 Textiles Backend listening on port ${PORT}`));
