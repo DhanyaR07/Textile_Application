@@ -78,9 +78,9 @@ function InvoicePage() {
         try {
             setLoading(true);
             const [prodRes, custRes, orderRes] = await Promise.all([
-                fetch('http://localhost:5001/api/products'),
-                fetch('http://localhost:5001/api/customers'),
-                fetch('http://localhost:5001/api/orders-manifest') 
+                fetch('https://textile-backend-jhm4.onrender.com/api/products'),
+                fetch('https://textile-backend-jhm4.onrender.com/api/customers'),
+                fetch('https://textile-backend-jhm4.onrender.com/api/orders-manifest') 
             ]);
             const prodData = await prodRes.json();
             const custData = await custRes.json();
@@ -224,7 +224,7 @@ function InvoicePage() {
             };
 
             // 1. Save master invoice statement parameters
-            const res = await fetch('http://localhost:5001/api/invoices/save-draft', {
+            const res = await fetch('https://textile-backend-jhm4.onrender.com/api/invoices/save-draft', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -234,7 +234,7 @@ function InvoicePage() {
             if (data.success) {
                 // 2. Automatically flag the origin reference order status inside the DB as 'COMPLETED'
                 try {
-                    await fetch(`http://localhost:5001/api/orders/complete/${encodeURIComponent(headerData.invoice_no)}`, {
+                    await fetch(`https://textile-backend-jhm4.onrender.com/api/orders/complete/${encodeURIComponent(headerData.invoice_no)}`, {
                         method: 'PUT'
                     });
                 } catch (err) {

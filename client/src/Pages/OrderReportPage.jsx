@@ -14,7 +14,7 @@ function OrderReportPage() {
     const loadData = async () => {
         try {
             setLoading(true);
-            const res = await fetch('http://localhost:5001/api/orders-manifest');
+            const res = await fetch('https://textile-backend-jhm4.onrender.com/api/orders-manifest');
             const data = await res.json();
             if (data.success) {
                 const allOrders = data.data || [];
@@ -32,7 +32,7 @@ function OrderReportPage() {
 
     const deleteOrderBundle = async (invoiceNo) => {
         try {
-            const res = await fetch(`http://localhost:5001/api/orders/${encodeURIComponent(invoiceNo)}`, { method: 'DELETE' });
+            const res = await fetch(`https://textile-backend-jhm4.onrender.com/api/orders/${encodeURIComponent(invoiceNo)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 message.success("Order file record deleted.");

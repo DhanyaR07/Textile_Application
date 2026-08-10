@@ -49,8 +49,8 @@ function ReportPage() {
         try {
             setLoading(true);
             const [orderRes, invRes] = await Promise.all([
-                fetch('http://localhost:5001/api/orders-manifest'),
-                fetch('http://localhost:5001/api/invoices-history')
+                fetch('https://textile-backend-jhm4.onrender.com/api/orders-manifest'),
+                fetch('https://textile-backend-jhm4.onrender.com/api/invoices-history')
             ]);
             const orderData = await orderRes.json();
             const invData = await invRes.json();
@@ -72,7 +72,7 @@ function ReportPage() {
 
     const deleteInvoice = async (invoiceNo) => {
         try {
-            const res = await fetch(`http://localhost:5001/api/invoices/${encodeURIComponent(invoiceNo)}`, { method: 'DELETE' });
+            const res = await fetch(`https://textile-backend-jhm4.onrender.com/api/invoices/${encodeURIComponent(invoiceNo)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 message.success("Invoice statement deleted.");
@@ -85,7 +85,7 @@ function ReportPage() {
 
     const deleteOrderBundle = async (invoiceNo) => {
         try {
-            const res = await fetch(`http://localhost:5001/api/orders/${encodeURIComponent(invoiceNo)}`, { method: 'DELETE' });
+            const res = await fetch(`https://textile-backend-jhm4.onrender.com/api/orders/${encodeURIComponent(invoiceNo)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 message.success("Order file record deleted.");
@@ -115,7 +115,7 @@ function ReportPage() {
     const handleUpdateInvoiceSummary = async () => {
         try {
             const values = await invoiceForm.validateFields();
-            const res = await fetch('http://localhost:5001/api/invoices/save-draft', {
+            const res = await fetch('https://textile-backend-jhm4.onrender.com/api/invoices/save-draft', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...values, invoice_no: editingInvoiceNo })
@@ -136,7 +136,7 @@ function ReportPage() {
         const targetInvoiceNo = String(invoiceRecord?.Invoice_No || invoiceRecord?.invoice_no || '').trim();
 
         try {
-            const res = await fetch(`http://localhost:5001/api/invoices/details/${encodeURIComponent(targetInvoiceNo)}`);
+            const res = await fetch(`https://textile-backend-jhm4.onrender.com/api/invoices/details/${encodeURIComponent(targetInvoiceNo)}`);
             const result = await res.json();
 
             if (result.success) {

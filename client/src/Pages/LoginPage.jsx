@@ -15,7 +15,7 @@ function LoginPage() {
   const handleFormSubmit = async (values) => {
     const endpoint = isRegisterMode ? '/api/register' : '/api/login';
     try {
-      const response = await fetch(`http://localhost:5001${endpoint}`, {
+      const response = await fetch(`https://textile-backend-jhm4.onrender.com${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
