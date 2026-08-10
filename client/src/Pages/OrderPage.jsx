@@ -29,9 +29,9 @@ function OrderPage() {
         try {
             setLoading(true);
             const [prodRes, custRes, orderRes] = await Promise.all([
-                fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/products'),
-                fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/customers'),
-                fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/orders-manifest') 
+                fetch('http://localhost:5001/api/products'),
+                fetch('http://localhost:5001/api/customers'),
+                fetch('http://localhost:5001/api/orders-manifest') 
             ]);
             const prodData = await prodRes.json();
             const custData = await custRes.json();
@@ -98,7 +98,7 @@ function OrderPage() {
             const savePromises = orderItems.map(item => {
                 if (!item.Product_Name) return Promise.resolve();
                 
-                return fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/orders', {
+                return fetch('http://localhost:5001/api/orders', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -135,7 +135,7 @@ function OrderPage() {
 
     const markAsCompleted = async (invoiceNo) => {
         try {
-            const res = await fetch(`[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/orders/complete/${encodeURIComponent(invoiceNo)}`, {
+            const res = await fetch(`http://localhost:5001/api/orders/complete/${encodeURIComponent(invoiceNo)}`, {
                 method: 'PUT'
             });
             const data = await res.json();
@@ -150,7 +150,7 @@ function OrderPage() {
 
     const deleteOrderBundle = async (invoiceNo) => {
         try {
-            const res = await fetch(`[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/orders/${encodeURIComponent(invoiceNo)}`, {
+            const res = await fetch(`http://localhost:5001/api/orders/${encodeURIComponent(invoiceNo)}`, {
                 method: 'DELETE'
             });
             const data = await res.json();
@@ -189,7 +189,7 @@ function OrderPage() {
 
     const handleSaveEditedOrder = async () => {
         try {
-            const res = await fetch(`[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/orders/${encodeURIComponent(editingInvoiceNo)}`, {
+            const res = await fetch(`http://localhost:5001/api/orders/${encodeURIComponent(editingInvoiceNo)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ items: editOrderItems })

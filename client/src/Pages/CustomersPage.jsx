@@ -21,7 +21,7 @@ function CustomersPage() {
     const fetchCustomers = async () => {
         try {
             setLoading(true);
-            const res = await fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/customers');
+            const res = await fetch('http://localhost:5001/api/customers');
             const data = await res.json();
             if (data.success) setCustomers(data.data || []);
         } catch (err) {
@@ -41,7 +41,7 @@ function CustomersPage() {
                 State: String(values.State || '').trim().toUpperCase(),
                 GSTIN_NO: String(values.GSTIN_NO || '').trim().toUpperCase()
             };
-            const res = await fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/customers', {
+            const res = await fetch('http://localhost:5001/api/customers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(sanitized)
@@ -73,7 +73,7 @@ function CustomersPage() {
                 GSTIN_NO: String(values.GSTIN_NO || '').trim().toUpperCase()
             };
             
-            const res = await fetch(`[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/customers/${editingCustomer.id}`, {
+            const res = await fetch(`http://localhost:5001/api/customers/${editingCustomer.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(sanitized)
@@ -97,7 +97,7 @@ function CustomersPage() {
             return;
         }
         try {
-            const res = await fetch(`[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/customers/${id}`, { 
+            const res = await fetch(`http://localhost:5001/api/customers/${id}`, { 
                 method: 'DELETE' 
             });
             const data = await res.json();

@@ -24,9 +24,9 @@ function DashboardPage() {
         try {
             setLoading(true);
             const [prodRes, custRes, orderRes] = await Promise.all([
-                fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/products'),
-                fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/customers'),
-                fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/orders-manifest')
+                fetch('http://localhost:5001/api/products'),
+                fetch('http://localhost:5001/api/customers'),
+                fetch('http://localhost:5001/api/orders-manifest')
             ]);
 
             const prodData = await prodRes.json();
