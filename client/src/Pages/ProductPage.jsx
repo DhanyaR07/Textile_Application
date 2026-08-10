@@ -21,7 +21,7 @@ function ProductsPage() {
     const fetchProducts = async () => {
         try {
             setLoading(true);
-            const res = await fetch('http://localhost:5001/api/products');
+            const res = await fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/products');
             const data = await res.json();
             if (data.success) setProducts(data.data || []);
         } catch (err) {
@@ -36,7 +36,7 @@ function ProductsPage() {
     const handleAddProduct = async () => {
         try {
             const values = await addForm.validateFields();
-            const res = await fetch('http://localhost:5001/api/products', {
+            const res = await fetch('[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/products', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values)
@@ -65,7 +65,7 @@ function ProductsPage() {
             // Target the unique string record under the new "item" key column
             const productIdentifier = editingProduct.item;
             
-            const res = await fetch(`http://localhost:5001/api/products/${encodeURIComponent(productIdentifier)}`, {
+            const res = await fetch(`[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/products/${encodeURIComponent(productIdentifier)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values)
@@ -83,7 +83,7 @@ function ProductsPage() {
 
     const deleteProduct = async (itemKey) => {
         try {
-            const res = await fetch(`http://localhost:5001/api/products/${encodeURIComponent(itemKey)}`, { 
+            const res = await fetch(`[https://textile-backend-jhm4.onrender.com](https://textile-backend-jhm4.onrender.com)/api/products/${encodeURIComponent(itemKey)}`, { 
                 method: 'DELETE' 
             });
             const data = await res.json();
