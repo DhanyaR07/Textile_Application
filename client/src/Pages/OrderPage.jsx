@@ -406,14 +406,14 @@ function OrderPage() {
             </Layout>
 
             <Modal 
-                title={`Modify Items Grid for Invoice: ${editingInvoiceNo}`} 
-                open={isEditModalVisible} 
-                onOk={handleSaveEditedOrder} 
-                onCancel={() => setIsEditModalVisible(false)} 
-                width={900}
-                destroyOnClose 
-                styles={{ body: { padding: '15px' } }}
-            >
+    title={`Modify Items Grid for Invoice: ${editingInvoiceNo}`} 
+    open={isEditModalVisible} 
+    onOk={handleSaveEditedOrder} 
+    onCancel={() => setIsEditModalVisible(false)} 
+    width={900}
+    destroyOnHidden 
+    styles={{ body: { padding: '15px' } }}
+>
                 <table className="excel-ledger-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #d9d9d9', marginTop: '15px' }}>
                     <thead>
                         <tr style={{ background: '#fafafa' }}>

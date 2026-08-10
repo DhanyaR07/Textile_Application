@@ -182,25 +182,27 @@ app.get('/api/gst-rates', async (req, res) => {
 // 📋 ORDERS MANIFEST ROUTES
 app.post('/api/orders', async (req, res) => {
     const orderData = req.body;
-    const stateCheck = String(orderData.State || '').trim().toUpperCase();
+    const stateCheck = String(orderData.State || 'TAMIL NADU').trim().toUpperCase();
     
     try {
-        const [gstRows] = await pool.query('SELECT * FROM gst WHERE UPPER(State) = ?', [stateCheck]);
-        let cgstRate = 0.00, sgstRate = 0.00, igstRate = 0.00;
-        
-        if (gstRows.length > 0) {
-            cgstRate = Number(gstRows[0].CGST || 0);
-            sgstRate = Number(gstRows[0].SGST || 0);
-            igstRate = Number(gstRows[0].IGST || 0);
-        } else {
-            if (stateCheck === 'TAMIL NADU') {
-                cgstRate = 2.50; sgstRate = 2.50; igstRate = 0.00;
-            } else {
+        let cgstRate = 2.50, sgstRate = 2.50, igstRate = 0.00;
+
+        try {
+            const [gstRows] = await pool.query('SELECT * FROM gst WHERE UPPER(State) = ?', [stateCheck]);
+            if (gstRows && gstRows.length > 0) {
+                cgstRate = Number(gstRows[0].CGST || 0);
+                sgstRate = Number(gstRows[0].SGST || 0);
+                igstRate = Number(gstRows[0].IGST || 0);
+            } else if (stateCheck !== 'TAMIL NADU') {
                 cgstRate = 0.00; sgstRate = 0.00; igstRate = 5.00;
             }
+        } catch (gstErr) {
+            console.warn("⚠️ GST lookup bypass:", gstErr.message);
         }
         
-        const amt = Number(orderData.QTY || 1) * Number(orderData.Rate || 0);
+        const qty = Number(orderData.QTY || 1);
+        const rate = Number(orderData.Rate || 0);
+        const amt = qty * rate;
         const disc = Number(orderData.Discount || 0);
         const taxableVal = Math.max(0, amt - disc);
         
@@ -212,20 +214,36 @@ app.post('/api/orders', async (req, res) => {
             INSERT INTO order_details (
                 Invoice_No, Customer_name, Company_Name, Address, State, State_Code, 
                 GSTIN_NO, Phone_no, Product_Name, HSN_Code, QTY, Size, Rate, 
-                Amount, Discount, Taxvalue, CGST_Rate, SGST_Rate, IGST_Rate
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                Amount, Discount, Taxvalue, CGST_Rate, SGST_Rate, IGST_Rate, Order_Status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
         `;
 
         const values = [
-            orderData.Invoice_No, orderData.Customer_name, orderData.Company_Name, orderData.Address,
-            orderData.State, orderData.State_Code, orderData.GSTIN_NO, orderData.Phone_no,
-            orderData.Product_Name, orderData.HSN_Code, orderData.QTY, orderData.Size, orderData.Rate,
-            amt, disc, calculatedTax, cgstRate, sgstRate, igstRate
+            String(orderData.Invoice_No || 'INV-001'),
+            String(orderData.Customer_name || 'Walk-in Customer'),
+            String(orderData.Company_Name || '—'),
+            String(orderData.Address || '—'),
+            stateCheck,
+            String(orderData.State_Code || '33'),
+            String(orderData.GSTIN_NO || '—'),
+            String(orderData.Phone_no || '—'),
+            String(orderData.Product_Name || 'General Item'),
+            String(orderData.HSN_Code || '5402'),
+            qty,
+            String(orderData.Size || 'Standard'),
+            rate,
+            amt,
+            disc,
+            calculatedTax,
+            cgstRate,
+            sgstRate,
+            igstRate
         ];
 
         const [result] = await pool.query(insertQuery, values);
         res.json({ success: true, message: 'Order item recorded!', id: result.insertId });
     } catch (err) {
+        console.error("❌ ORDER SAVE ERROR:", err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
