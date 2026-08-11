@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Table, Typography, Button, Modal, Space, Popconfirm, Form, Input, InputNumber, message } from 'antd';
+import { Layout, Menu, Table, Tag, Typography, Button, Modal, Space, Popconfirm, Form, Input, InputNumber, message } from 'antd';
 import { DashboardOutlined, FileTextOutlined, ShoppingCartOutlined, UserOutlined, LogoutOutlined, PlusOutlined, BarChartOutlined, EyeOutlined, EditOutlined, DeleteOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -59,7 +59,7 @@ function ReportPage() {
             if (orderData.success) {
                 const allOrders = orderData.data || [];
                 setAllRawOrders(allOrders);
-                setCompletedOrders(allOrders.filter(o => o.Ordered_Products[0]?.Order_Status === 'COMPLETED'));
+                setCompletedOrders(allOrders.filter(o => o.Ordered_Products && o.Ordered_Products[0]?.Order_Status === 'COMPLETED'));
             }
         } catch (err) {
             message.error("Failed to sync historical databases.");
@@ -131,7 +131,6 @@ function ReportPage() {
         }
     };
 
-    // 🚀 DIRECT API VIEW FETCH FUNCTION
     const viewEntireBill = async (invoiceRecord) => {
         const targetInvoiceNo = String(invoiceRecord?.Invoice_No || invoiceRecord?.invoice_no || '').trim();
 
@@ -144,7 +143,6 @@ function ReportPage() {
                 setSelectedBill(fetchedData);
                 setSelectedBillItems(fetchedData.items || []);
             } else {
-                // Fallback to locally cached arrays if custom API is missing
                 const matchedOrder = allRawOrders.find(o => String(o?.Invoice_No || '').trim() === targetInvoiceNo);
                 setSelectedBill({ ...matchedOrder, ...invoiceRecord });
                 setSelectedBillItems(matchedOrder ? matchedOrder.Ordered_Products : []);
@@ -156,6 +154,31 @@ function ReportPage() {
         }
 
         setBillModalVisible(true);
+    };
+
+    // 🚀 SUB-TABLE FOR EXPANDABLE ORDER ROW (`+` ICON)
+    const renderPurchasedItemsSubTable = (orderedProductsArray) => {
+        const nestedColumns = [
+            { title: 'No', render: (_, __, index) => index + 1, width: 50, align: 'center' },
+            { title: 'Label / Brand Name', dataIndex: 'Product_Name', key: 'Product_Name', render: t => <strong>{t}</strong> },
+            { title: 'HSN Code', dataIndex: 'HSN_Code', key: 'HSN_Code', align: 'center' },
+            { title: 'Size', dataIndex: 'Size', key: 'Size', align: 'center' },
+            { title: 'Qty', dataIndex: 'QTY', key: 'QTY', align: 'center' },
+            { title: 'Base Rate', dataIndex: 'Rate', key: 'Rate', align: 'right', render: r => `₹${Number(r || 0).toFixed(2)}` },
+            { title: 'Total Amount', dataIndex: 'Amount', key: 'Amount', align: 'right', render: a => <strong>₹{Number(a || 0).toFixed(2)}</strong> }
+        ];
+
+        return (
+            <Table 
+                columns={nestedColumns} 
+                dataSource={orderedProductsArray || []} 
+                pagination={false} 
+                size="small" 
+                bordered 
+                rowKey={(item, idx) => item.Product_Name + idx} 
+                style={{ background: '#f9fbfd', margin: '8px 0' }} 
+            />
+        );
     };
 
     const invoiceColumns = [
@@ -189,10 +212,16 @@ function ReportPage() {
     ];
 
     const orderColumns = [
-        { title: 'Invoice Ref No', dataIndex: 'Invoice_No', key: 'Invoice_No', render: t => <strong>{t}</strong> },
+        { title: 'Invoice Ref No', dataIndex: 'Invoice_No', key: 'Invoice_No', render: t => <strong style={{ color: '#1890ff' }}>{t}</strong> },
         { title: 'Customer Name', dataIndex: 'Customer_name', key: 'Customer_name' },
         { title: 'Company / Brand', dataIndex: 'Company_Name', key: 'Company_Name' },
         { title: 'Destination State', dataIndex: 'State', key: 'State' },
+        { 
+            title: 'Items Booked', 
+            dataIndex: 'Ordered_Products', 
+            key: 'items', 
+            render: arr => <Tag color="blue">{Array.isArray(arr) ? arr.length : 0} Items Listed</Tag> 
+        },
         { 
             title: 'Actions', 
             key: 'ops', 
@@ -262,14 +291,35 @@ function ReportPage() {
 
                 <Content style={{ padding: '24px', background: '#fff', overflowY: 'auto' }}>
                     {isOrdersView ? (
-                        <Table dataSource={completedOrders} columns={orderColumns} rowKey="Invoice_No" size="small" loading={loading} bordered={false} pagination={{ pageSize: 10 }} />
+                        /* 🚀 EXPANDABLE CONFIGURATION ENABLED WITH '+' ICON */
+                        <Table 
+                            dataSource={completedOrders} 
+                            columns={orderColumns} 
+                            rowKey="Invoice_No" 
+                            size="small" 
+                            loading={loading} 
+                            bordered={false} 
+                            pagination={{ pageSize: 10 }} 
+                            expandable={{
+                                expandedRowRender: (rec) => renderPurchasedItemsSubTable(rec.Ordered_Products),
+                                defaultExpandAllRows: false
+                            }}
+                        />
                     ) : (
-                        <Table dataSource={savedInvoices} columns={invoiceColumns} rowKey={(r) => r.Invoice_No || r.invoice_no || Math.random()} size="small" loading={loading} bordered={false} pagination={{ pageSize: 10 }} />
+                        <Table 
+                            dataSource={savedInvoices} 
+                            columns={invoiceColumns} 
+                            rowKey={(r) => r.Invoice_No || r.invoice_no || Math.random()} 
+                            size="small" 
+                            loading={loading} 
+                            bordered={false} 
+                            pagination={{ pageSize: 10 }} 
+                        />
                     )}
                 </Content>
             </Layout>
 
-            {/* ✏️ EDIT INVOICE MODAL (allows manually fixing empty Bale, LR, and Lorry values) */}
+            {/* EDIT INVOICE MODAL */}
             <Modal title="Modify Invoice Summary Parameters" open={isEditInvoiceVisible} onOk={handleUpdateInvoiceSummary} onCancel={() => setIsEditInvoiceVisible(false)} destroyOnHidden>
                 <Form form={invoiceForm} layout="vertical">
                     <Form.Item name="Customer_Name" label="Client Name" rules={[{ required: true }]}><Input /></Form.Item>
@@ -282,18 +332,16 @@ function ReportPage() {
                 </Form>
             </Modal>
 
-            {/* 🖨️ FULL INVOICE VIEW POPUP MODAL */}
+            {/* FULL INVOICE VIEW POPUP MODAL */}
             <Modal title={null} footer={null} open={billModalVisible} onCancel={() => setBillModalVisible(false)} width={850} centered styles={{ body: { padding: '20px' } }}>
                 {selectedBill && (
                     <div id="printable-bill-invoice-node" style={{ color: '#000000', fontFamily: 'serif' }}>
-                        {/* COMPANY HEADER */}
                         <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '8px', marginBottom: '12px' }}>
                             <Title level={3} style={{ margin: 0, fontWeight: 'bold', color: '#000', fontFamily: 'serif' }}>SRI BANUKRISHNA TEXTILES</Title>
                             <Text style={{ fontSize: '13px', display: 'block', color: '#000' }}>408/A, Anaikattu Road, Rajiv Nagar, Surampatti Valasu, Erode - 638009</Text>
                             <Text style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#000' }}>Prop: S.R. Krishnan &nbsp;|&nbsp; Mobile: 9443840784 / 9486153380 &nbsp;|&nbsp; GSTIN: 33AIUPK8316R3ZB</Text>
                         </div>
 
-                        {/* RECEIVER & LOGISTICS TABLE */}
                         <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '12px', marginBottom: '12px' }}>
                             <tbody>
                                 <tr style={{ background: '#f5f5f5', borderBottom: '1px solid #000' }}>
@@ -316,7 +364,6 @@ function ReportPage() {
                             </tbody>
                         </table>
 
-                        {/* PRODUCT ITEMS LEDGER TABLE WITH AMOUNT COLUMN */}
                         <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '12px', marginBottom: '12px' }}>
                             <thead>
                                 <tr style={{ background: '#f5f5f5', borderBottom: '1px solid #000' }}>
@@ -357,7 +404,6 @@ function ReportPage() {
                             </tbody>
                         </table>
 
-                        {/* UNIFIED FOOTER: BANK DETAILS, TAX BREAKDOWNS & NET TOTAL */}
                         <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '11px', marginBottom: '15px' }}>
                             <tbody>
                                 <tr>

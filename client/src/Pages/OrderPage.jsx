@@ -90,48 +90,61 @@ function OrderPage() {
     const addRow = () => setOrderItems([...orderItems, { id: Date.now() + Math.random(), Product_Name: '', HSN_Code: '', QTY: 1, Size: '', Rate: 0, Amount: 0, Discount: 0 }]);
     const removeRow = (index) => { if (orderItems.length > 1) setOrderItems(orderItems.filter((_, i) => i !== index)); };
 
-    const handleSaveOrder = async () => {
-        try {
-            const customerMeta = await form.validateFields();
-            setLoading(true);
+const handleSaveOrder = async () => {
+    try {
+        const customerMeta = await form.validateFields();
+        
+        // Filter out empty rows before making requests
+        const validItems = orderItems.filter(item => item.Product_Name && item.Product_Name.trim() !== '');
 
-            const savePromises = orderItems.map(item => {
-                if (!item.Product_Name) return Promise.resolve();
-                
-                return fetch('https://textile-backend-jhm4.onrender.com/api/orders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        Invoice_No: customerMeta.Invoice_No,
-                        Customer_name: customerMeta.Customer_name,
-                        Company_Name: customerMeta.Company_Name,
-                        Address: customerMeta.Address,
-                        State: customerMeta.State,
-                        State_Code: customerMeta.State_Code,
-                        GSTIN_NO: customerMeta.GSTIN_NO,
-                        Phone_no: customerMeta.Phone_no,
-                        Product_Name: item.Product_Name, // 🚀 This will now contain the 'lable' value string
-                        HSN_Code: item.HSN_Code,
-                        QTY: item.QTY,
-                        Size: item.Size,
-                        Rate: item.Rate,
-                        Discount: item.Discount
-                    })
-                });
+        if (validItems.length === 0) {
+            message.error("Please select at least one valid product.");
+            return;
+        }
+
+        setLoading(true);
+
+        const savePromises = validItems.map(item => {
+            return fetch('https://textile-backend-jhm4.onrender.com/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    Invoice_No: customerMeta.Invoice_No,
+                    Customer_name: customerMeta.Customer_name,
+                    Company_Name: customerMeta.Company_Name || '—',
+                    Address: customerMeta.Address || '—',
+                    State: customerMeta.State || 'TAMIL NADU',
+                    State_Code: customerMeta.State_Code || '33',
+                    GSTIN_NO: customerMeta.GSTIN_NO || '—',
+                    Phone_no: customerMeta.Phone_no || '—',
+                    Product_Name: item.Product_Name,
+                    HSN_Code: item.HSN_Code || '5402',
+                    QTY: item.QTY || 1,
+                    Size: item.Size || 'Standard',
+                    Rate: item.Rate || 0,
+                    Discount: item.Discount || 0
+                })
             });
+        });
 
-            await Promise.all(savePromises);
+        const responses = await Promise.all(savePromises);
+        const results = await Promise.all(responses.map(r => r.json()));
+
+        const failed = results.find(r => !r.success);
+        if (failed) {
+            message.error(`Database error: ${failed.error || 'Server rejected order insertion'}`);
+        } else {
             message.success(`Daily Order Booked Successfully! Invoice No: ${customerMeta.Invoice_No}`);
-            
             form.resetFields();
             setOrderItems([{ id: Date.now(), Product_Name: '', HSN_Code: '', QTY: 1, Size: '', Rate: 0, Amount: 0, Discount: 0 }]);
             loadPortalData(); 
-        } catch (err) {
-            message.error("Validation error or server node connection timeout.");
-        } finally {
-            setLoading(false);
         }
-    };
+    } catch (err) {
+        message.error("Validation error or server node connection timeout.");
+    } finally {
+        setLoading(false);
+    }
+};
 
     const markAsCompleted = async (invoiceNo) => {
         try {

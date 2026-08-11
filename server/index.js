@@ -21,7 +21,7 @@ app.post('/api/register', async (req, res) => {
     try {
         const [existingUsers] = await pool.query(
             'SELECT * FROM users WHERE LOWER(username) = ?',
-            [String(username).toLowerCase()]
+            [String(username).toLowerCase().trim()]
         );
 
         if (existingUsers.length > 0) { 
@@ -32,7 +32,7 @@ app.post('/api/register', async (req, res) => {
         const encryptedHash = await bcrypt.hash(String(password), saltRounds);
 
         const sqlInsert = 'INSERT INTO users (username, password, role) VALUES (?, ?, ?)';
-        await pool.query(sqlInsert, [String(username), encryptedHash, String(role)]);
+        await pool.query(sqlInsert, [String(username).trim(), encryptedHash, String(role).trim()]);
 
         return res.json({ success: true, message: 'Account successfully configured!' });
     } catch (error) {
@@ -48,7 +48,7 @@ app.post('/api/login', async (req, res) => {
     try {
         const [rows] = await pool.query(
             'SELECT * FROM users WHERE LOWER(username) = ?',
-            [String(username || '').toLowerCase()]
+            [String(username || '').toLowerCase().trim()]
         );
        
         if (rows.length === 0) {
@@ -183,6 +183,7 @@ app.get('/api/gst-rates', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
     const orderData = req.body;
     const stateCheck = String(orderData.State || 'TAMIL NADU').trim().toUpperCase();
+    const cleanInvoiceNo = String(orderData.Invoice_No || 'INV-001').trim();
     
     try {
         let cgstRate = 2.50, sgstRate = 2.50, igstRate = 0.00;
@@ -219,18 +220,18 @@ app.post('/api/orders', async (req, res) => {
         `;
 
         const values = [
-            String(orderData.Invoice_No || 'INV-001'),
-            String(orderData.Customer_name || 'Walk-in Customer'),
-            String(orderData.Company_Name || '—'),
-            String(orderData.Address || '—'),
+            cleanInvoiceNo,
+            String(orderData.Customer_name || 'Walk-in Customer').trim(),
+            String(orderData.Company_Name || '—').trim(),
+            String(orderData.Address || '—').trim(),
             stateCheck,
-            String(orderData.State_Code || '33'),
-            String(orderData.GSTIN_NO || '—'),
-            String(orderData.Phone_no || '—'),
-            String(orderData.Product_Name || 'General Item'),
-            String(orderData.HSN_Code || '5402'),
+            String(orderData.State_Code || '33').trim(),
+            String(orderData.GSTIN_NO || '—').trim(),
+            String(orderData.Phone_no || '—').trim(),
+            String(orderData.Product_Name || 'General Item').trim(),
+            String(orderData.HSN_Code || '5402').trim(),
             qty,
-            String(orderData.Size || 'Standard'),
+            String(orderData.Size || 'Standard').trim(),
             rate,
             amt,
             disc,
@@ -255,7 +256,7 @@ app.get('/api/orders-manifest', async (req, res) => {
             Product_Name, HSN_Code, QTY, Size, Rate, Amount, Discount, Taxvalue, CGST_Rate, SGST_Rate, IGST_Rate,
             Order_Status 
         FROM order_details
-        ORDER BY Invoice_No DESC
+        ORDER BY id DESC
     `;
     
     try {
@@ -263,11 +264,11 @@ app.get('/api/orders-manifest', async (req, res) => {
         const manifestMap = {};
         
         rawRows.forEach(row => {
-            const key = row.Invoice_No;
+            const key = String(row.Invoice_No || '').trim();
             
             if (!manifestMap[key]) {
                 manifestMap[key] = {
-                    Invoice_No: row.Invoice_No,
+                    Invoice_No: key,
                     Customer_name: row.Customer_name,
                     Company_Name: row.Company_Name,
                     Address: row.Address,
@@ -303,10 +304,10 @@ app.get('/api/orders-manifest', async (req, res) => {
 });
 
 app.put('/api/orders/complete/:invoiceNo', async (req, res) => {
-    const invoiceNo = decodeURIComponent(req.params.invoiceNo);
+    const cleanInvoiceNo = decodeURIComponent(req.params.invoiceNo).trim();
     try {
-        const updateQuery = "UPDATE order_details SET Order_Status = 'COMPLETED' WHERE Invoice_No = ?";
-        const [result] = await pool.query(updateQuery, [invoiceNo]);
+        const updateQuery = "UPDATE order_details SET Order_Status = 'COMPLETED' WHERE TRIM(Invoice_No) = ? OR Invoice_No = ?";
+        const [result] = await pool.query(updateQuery, [cleanInvoiceNo, cleanInvoiceNo]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ success: false, message: "No pending transaction rows found." });
         }
@@ -317,9 +318,9 @@ app.put('/api/orders/complete/:invoiceNo', async (req, res) => {
 });
 
 app.delete('/api/orders/:invoiceNo', async (req, res) => {
-    const invoiceNo = decodeURIComponent(req.params.invoiceNo);
+    const cleanInvoiceNo = decodeURIComponent(req.params.invoiceNo).trim();
     try {
-        await pool.query("DELETE FROM order_details WHERE Invoice_No = ?", [invoiceNo]);
+        await pool.query("DELETE FROM order_details WHERE TRIM(Invoice_No) = ? OR Invoice_No = ?", [cleanInvoiceNo, cleanInvoiceNo]);
         res.json({ success: true, message: 'Order bundle permanently removed.' });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -328,8 +329,19 @@ app.delete('/api/orders/:invoiceNo', async (req, res) => {
 
 // 🚀 INVOICES SAVE DRAFT ROUTE
 app.post('/api/invoices/save-draft', async (req, res) => {
-    const { invoice_no, receiver_name, bale_no, lr_no, date, taxableSum, netTotal, lorry_name } = req.body;
+    const { 
+        invoice_no, 
+        receiver_name, 
+        bale_no, 
+        lr_no, 
+        date, 
+        taxableSum, 
+        netTotal, 
+        lorry_name 
+    } = req.body;
+    
     const company_name = req.body.company_name || req.body.Company_Name || '—';
+    const cleanInvoiceNo = String(invoice_no || '').trim();
     
     try {
         const invoiceSql = `
@@ -337,23 +349,44 @@ app.post('/api/invoices/save-draft', async (req, res) => {
             (Invoice_No, Customer_Name, Company_Name, Total_Taxable, Net_Total, Bale_No, LR_No, Invoice_Date, Lorry_Name) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
-            Customer_Name = ?, Company_Name = ?, Total_Taxable = ?, Net_Total = ?, Bale_No = ?, LR_No = ?, Invoice_Date = ?, Lorry_Name = ?
+            Customer_Name = VALUES(Customer_Name), 
+            Company_Name = VALUES(Company_Name), 
+            Total_Taxable = VALUES(Total_Taxable), 
+            Net_Total = VALUES(Net_Total), 
+            Bale_No = VALUES(Bale_No), 
+            LR_No = VALUES(LR_No), 
+            Invoice_Date = VALUES(Invoice_Date), 
+            Lorry_Name = VALUES(Lorry_Name)
         `;
         
         await pool.query(invoiceSql, [
-            invoice_no, receiver_name, company_name, Number(taxableSum || 0), Number(netTotal || 0), bale_no, lr_no, date, lorry_name,
-            receiver_name, company_name, Number(taxableSum || 0), Number(netTotal || 0), bale_no, lr_no, date, lorry_name
+            cleanInvoiceNo, 
+            String(receiver_name || '—').trim(), 
+            String(company_name || '—').trim(), 
+            Number(taxableSum || 0), 
+            Number(netTotal || 0), 
+            String(bale_no || '—').trim(), 
+            String(lr_no || '—').trim(), 
+            date || new Date().toISOString().split('T')[0], 
+            String(lorry_name || '—').trim()
         ]);
 
-        try {
-            await pool.query("UPDATE order_details SET Order_Status = 'COMPLETED' WHERE Invoice_No = ?", [invoice_no]);
-        } catch (orderErr) {
-            console.log("⚠️ Order status skip:", orderErr.message);
-        }
+        // 🚀 Robust update query matching both exact and trimmed Invoice_No in order_details
+        const [updateResult] = await pool.query(
+            "UPDATE order_details SET Order_Status = 'COMPLETED' WHERE TRIM(Invoice_No) = ? OR Invoice_No = ?", 
+            [cleanInvoiceNo, cleanInvoiceNo]
+        );
 
-        return res.json({ success: true, message: 'Invoice records synced successfully!' });
+        console.log(`✅ Invoice saved. Updated ${updateResult.affectedRows} matching order rows to COMPLETED.`);
+
+        return res.json({ 
+            success: true, 
+            message: 'Invoice saved & Order portal synced successfully!',
+            ordersUpdated: updateResult.affectedRows 
+        });
 
     } catch (err) {
+        console.error("❌ SAVE DRAFT ERROR:", err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -370,10 +403,10 @@ app.get('/api/invoices-history', async (req, res) => {
 
 // 🔍 FETCH SINGLE INVOICE DETAILS FOR PRINT PREVIEW
 app.get('/api/invoices/details/:invoiceNo', async (req, res) => {
-    const invoiceNo = decodeURIComponent(req.params.invoiceNo);
+    const cleanInvoiceNo = decodeURIComponent(req.params.invoiceNo).trim();
     try {
-        const [invRows] = await pool.query('SELECT * FROM invoice_billing_ledger WHERE Invoice_No = ?', [invoiceNo]);
-        const [orderRows] = await pool.query('SELECT * FROM order_details WHERE Invoice_No = ?', [invoiceNo]);
+        const [invRows] = await pool.query('SELECT * FROM invoice_billing_ledger WHERE TRIM(Invoice_No) = ? OR Invoice_No = ?', [cleanInvoiceNo, cleanInvoiceNo]);
+        const [orderRows] = await pool.query('SELECT * FROM order_details WHERE TRIM(Invoice_No) = ? OR Invoice_No = ?', [cleanInvoiceNo, cleanInvoiceNo]);
 
         const invoice = invRows[0] || {};
         
@@ -396,9 +429,9 @@ app.get('/api/invoices/details/:invoiceNo', async (req, res) => {
 });
 
 app.delete('/api/invoices/:invoiceNo', async (req, res) => {
-    const invoiceNo = decodeURIComponent(req.params.invoiceNo);
+    const cleanInvoiceNo = decodeURIComponent(req.params.invoiceNo).trim();
     try {
-        const [result] = await pool.query("DELETE FROM invoice_billing_ledger WHERE Invoice_No = ?", [invoiceNo]);
+        const [result] = await pool.query("DELETE FROM invoice_billing_ledger WHERE TRIM(Invoice_No) = ? OR Invoice_No = ?", [cleanInvoiceNo, cleanInvoiceNo]);
         if (result.affectedRows === 0) return res.status(404).json({ success: false, message: "Invoice not found." });
         res.json({ success: true, message: "Invoice permanently removed." });
     } catch (err) {

@@ -18,8 +18,8 @@ function OrderReportPage() {
             const data = await res.json();
             if (data.success) {
                 const allOrders = data.data || [];
-                // 🚀 Automatically reflects order bundles loaded and marked completed by the billing invoice workspace
-                setCompletedOrders(allOrders.filter(o => o.Ordered_Products[0]?.Order_Status === 'COMPLETED'));
+                // Filter completed orders to display in Saved Orders Portal
+                setCompletedOrders(allOrders.filter(o => o.Ordered_Products && o.Ordered_Products[0]?.Order_Status === 'COMPLETED'));
             }
         } catch (err) {
             message.error("Failed to load historical database records.");
@@ -43,26 +43,59 @@ function OrderReportPage() {
         }
     };
 
+    // 🚀 SUB-TABLE COMPONENT: Renders inside the expanded '+' row
     const renderPurchasedItemsSubTable = (orderedProductsArray) => {
         const nestedColumns = [
+            { title: 'No', render: (_, __, index) => index + 1, width: 50, align: 'center' },
             { title: 'Label / Brand Name', dataIndex: 'Product_Name', key: 'Product_Name', render: t => <strong>{t}</strong> },
-            { title: 'HSN Code', dataIndex: 'HSN_Code', key: 'HSN_Code' },
-            { title: 'Size', dataIndex: 'Size', key: 'Size' },
-            { title: 'Qty', dataIndex: 'QTY', key: 'QTY' },
-            { title: 'Rate', dataIndex: 'Rate', key: 'Rate', render: r => `₹${Number(r).toFixed(2)}` },
-            { title: 'Total Amount', dataIndex: 'Amount', key: 'Amount', render: a => `₹${Number(a).toFixed(2)}` }
+            { title: 'HSN Code', dataIndex: 'HSN_Code', key: 'HSN_Code', align: 'center' },
+            { title: 'Size', dataIndex: 'Size', key: 'Size', align: 'center' },
+            { title: 'Qty', dataIndex: 'QTY', key: 'QTY', align: 'center' },
+            { title: 'Base Rate', dataIndex: 'Rate', key: 'Rate', align: 'right', render: r => `₹${Number(r || 0).toFixed(2)}` },
+            { title: 'Total Amount', dataIndex: 'Amount', key: 'Amount', align: 'right', render: a => <strong>₹{Number(a || 0).toFixed(2)}</strong> }
         ];
+
         return (
-            <Table columns={nestedColumns} dataSource={orderedProductsArray || []} pagination={false} size="small" bordered rowKey={(item) => item.Product_Name + Math.random()} style={{ background: '#f9fbfd', margin: '4px 0' }} />
+            <Table 
+                columns={nestedColumns} 
+                dataSource={orderedProductsArray || []} 
+                pagination={false} 
+                size="small" 
+                bordered 
+                rowKey={(item, idx) => item.Product_Name + idx} 
+                style={{ background: '#f9fbfd', margin: '8px 0' }} 
+            />
         );
     };
 
     const orderColumns = [
-        { title: 'Invoice Ref No', dataIndex: 'Invoice_No', key: 'Invoice_No', render: t => <strong>{t}</strong> },
+        { title: 'Invoice Ref No', dataIndex: 'Invoice_No', key: 'Invoice_No', render: t => <strong style={{ color: '#1890ff' }}>{t}</strong> },
         { title: 'Customer Name', dataIndex: 'Customer_name', key: 'Customer_name' },
         { title: 'Company / Brand', dataIndex: 'Company_Name', key: 'Company_Name' },
         { title: 'Destination State', dataIndex: 'State', key: 'State' },
-        { title: 'Items Booked', dataIndex: 'Ordered_Products', key: 'items', render: arr => <Tag color="blue">{Array.isArray(arr) ? arr.length : 0} Varieties</Tag> }
+        { 
+            title: 'Items Booked', 
+            dataIndex: 'Ordered_Products', 
+            key: 'items', 
+            render: arr => <Tag color="blue">{Array.isArray(arr) ? arr.length : 0} Items Listed</Tag> 
+        },
+        {
+            title: 'Actions',
+            key: 'actions',
+            align: 'center',
+            width: 100,
+            render: (_, record) => (
+                <Popconfirm 
+                    title="Delete this order history?" 
+                    onConfirm={() => deleteOrderBundle(record.Invoice_No)} 
+                    okText="Yes" 
+                    cancelText="No" 
+                    okButtonProps={{ danger: true }}
+                >
+                    <Button type="text" danger icon={<DeleteOutlined />} />
+                </Popconfirm>
+            )
+        }
     ];
 
     return (
@@ -95,11 +128,21 @@ function OrderReportPage() {
                     <Title level={4} style={{ margin: 0 }}>Saved Orders Registry Portal 📦</Title>
                 </Header>
 
-                <Content style={{ padding: '24px', background: '#fff', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    <div>
-                        <Title level={5} style={{ marginBottom: '12px', color: '#52c41a' }}>Completed Orders History</Title>
-                        <Table dataSource={completedOrders} columns={[...orderColumns, { title: 'Actions', render: (_, rec) => <Popconfirm title="Delete order history?" onConfirm={() => deleteOrderBundle(rec.Invoice_No)} okButtonProps={{ danger: true }}><Button type="text" danger icon={<DeleteOutlined />} /></Popconfirm> }]} rowKey="Invoice_No" size="small" loading={loading} bordered={false} pagination={{ pageSize: 5 }} expandable={{ expandedRowRender: (rec) => renderPurchasedItemsSubTable(rec.Ordered_Products) }} />
-                    </div>
+                <Content style={{ padding: '24px', background: '#fff' }}>
+                    {/* 🚀 EXPANDABLE PROP ADDS THE '+' ICON AUTOMATICALLY TO THE LEFT */}
+                    <Table 
+                        dataSource={completedOrders} 
+                        columns={orderColumns} 
+                        rowKey="Invoice_No" 
+                        size="small" 
+                        loading={loading} 
+                        bordered={false} 
+                        pagination={{ pageSize: 10 }} 
+                        expandable={{ 
+                            expandedRowRender: (record) => renderPurchasedItemsSubTable(record.Ordered_Products),
+                            defaultExpandAllRows: false
+                        }}
+                    />
                 </Content>
             </Layout>
         </Layout>
